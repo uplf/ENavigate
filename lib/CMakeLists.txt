@@ -1,9 +1,9 @@
-# logger 是纯头文件库，用 INTERFACE
-add_library(agv_logger INTERFACE)
-target_include_directories(agv_logger INTERFACE
+add_library(agv_logger STATIC logger/logger.cpp)
+target_include_directories(agv_logger PUBLIC
     ${PROJECT_SOURCE_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/logger
 )
+target_link_libraries(agv_logger PUBLIC rt)
 
 # ipc 有 .cpp 文件，编译成静态库
 #add_library(agv_ipc STATIC

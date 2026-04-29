@@ -2,6 +2,7 @@
 /home/upef/enavigate/build/CMakeFiles/edit_cache.dir
 /home/upef/enavigate/build/lib/CMakeFiles/rebuild_cache.dir
 /home/upef/enavigate/build/lib/CMakeFiles/edit_cache.dir
+/home/upef/enavigate/build/lib/CMakeFiles/agv_logger.dir
 /home/upef/enavigate/build/src/CMakeFiles/rebuild_cache.dir
 /home/upef/enavigate/build/src/CMakeFiles/edit_cache.dir
 /home/upef/enavigate/build/src/log_daemon/CMakeFiles/rebuild_cache.dir

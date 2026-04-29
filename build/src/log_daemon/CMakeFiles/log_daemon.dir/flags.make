@@ -6,5 +6,5 @@ CXX_FLAGS =   -std=gnu++17
 
 CXX_DEFINES = 
 
-CXX_INCLUDES = -I/home/upef/enavigate/include 
+CXX_INCLUDES = -I/home/upef/enavigate/include -I/home/upef/enavigate/lib/logger 
 

@@ -111,6 +111,19 @@ depend:
 .PHONY : depend
 
 #=============================================================================
+# Target rules for targets named agv_logger
+
+# Build rule for target.
+agv_logger: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 agv_logger
+.PHONY : agv_logger
+
+# fast build rule for target.
+agv_logger/fast:
+	$(MAKE) -f lib/CMakeFiles/agv_logger.dir/build.make lib/CMakeFiles/agv_logger.dir/build
+.PHONY : agv_logger/fast
+
+#=============================================================================
 # Target rules for targets named log_daemon
 
 # Build rule for target.
@@ -144,6 +157,7 @@ help:
 	@echo "... depend"
 	@echo "... rebuild_cache"
 	@echo "... edit_cache"
+	@echo "... agv_logger"
 	@echo "... log_daemon"
 	@echo "... test_logger"
 .PHONY : help

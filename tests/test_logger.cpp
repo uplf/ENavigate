@@ -1,5 +1,5 @@
 #include "agv/log_msg.h"
-#include "logger/logger.h"
+#include "logger.h"
 mqd_t mq = agv_log_init();
 int main(){
     LOG_DEBUG("MainModule", "This is a debug message with value: %d", 100);

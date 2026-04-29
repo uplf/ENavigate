@@ -1,10 +1,10 @@
-#pragma once
 #include <mqueue.h>
 #include <cstdio>
 #include <cstring>
-#include "agv/log_msg.h"
+#include <cstdarg>
+#include "logger.h"
 
-inline mqd_t agv_log_init(){
+mqd_t agv_log_init(){
     struct mq_attr attr;
     attr.mq_flags = 0;
     attr.mq_maxmsg = MQ_LOG_MAXMSG;
@@ -19,7 +19,7 @@ inline mqd_t agv_log_init(){
     return mq;
 }
 
-inline void _agv_log(mqd_t mq, LogLevel level, const char* source, const char* text){
+static void _agv_log(mqd_t mq, LogLevel level, const char* source, const char* text){
     if (mq == (mqd_t)-1) {
         fprintf(stderr, "Invalid message queue descriptor\n");
         return;
@@ -34,4 +34,13 @@ inline void _agv_log(mqd_t mq, LogLevel level, const char* source, const char* t
     if (mq_send(mq, (const char*)&msg, sizeof(msg), 0) == -1) {
         perror("Failed to send log message");
     }
+}
+
+void agv_logf(mqd_t mq, LogLevel level, const char* source, const char* fmt, ...){
+    va_list args;
+    va_start(args, fmt);
+    char buf[MQ_LOG_MSGSIZE];
+    vsnprintf(buf, sizeof(buf), fmt, args);
+    va_end(args);
+    _agv_log(mq, level, source, buf);
 }

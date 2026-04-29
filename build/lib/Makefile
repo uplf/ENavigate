@@ -110,6 +110,48 @@ depend:
 	cd /home/upef/enavigate/build && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
 .PHONY : depend
 
+# Convenience name for target.
+lib/CMakeFiles/agv_logger.dir/rule:
+	cd /home/upef/enavigate/build && $(MAKE) -f CMakeFiles/Makefile2 lib/CMakeFiles/agv_logger.dir/rule
+.PHONY : lib/CMakeFiles/agv_logger.dir/rule
+
+# Convenience name for target.
+agv_logger: lib/CMakeFiles/agv_logger.dir/rule
+
+.PHONY : agv_logger
+
+# fast build rule for target.
+agv_logger/fast:
+	cd /home/upef/enavigate/build && $(MAKE) -f lib/CMakeFiles/agv_logger.dir/build.make lib/CMakeFiles/agv_logger.dir/build
+.PHONY : agv_logger/fast
+
+logger/logger.o: logger/logger.cpp.o
+
+.PHONY : logger/logger.o
+
+# target to build an object file
+logger/logger.cpp.o:
+	cd /home/upef/enavigate/build && $(MAKE) -f lib/CMakeFiles/agv_logger.dir/build.make lib/CMakeFiles/agv_logger.dir/logger/logger.cpp.o
+.PHONY : logger/logger.cpp.o
+
+logger/logger.i: logger/logger.cpp.i
+
+.PHONY : logger/logger.i
+
+# target to preprocess a source file
+logger/logger.cpp.i:
+	cd /home/upef/enavigate/build && $(MAKE) -f lib/CMakeFiles/agv_logger.dir/build.make lib/CMakeFiles/agv_logger.dir/logger/logger.cpp.i
+.PHONY : logger/logger.cpp.i
+
+logger/logger.s: logger/logger.cpp.s
+
+.PHONY : logger/logger.s
+
+# target to generate assembly for a file
+logger/logger.cpp.s:
+	cd /home/upef/enavigate/build && $(MAKE) -f lib/CMakeFiles/agv_logger.dir/build.make lib/CMakeFiles/agv_logger.dir/logger/logger.cpp.s
+.PHONY : logger/logger.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -118,6 +160,10 @@ help:
 	@echo "... depend"
 	@echo "... rebuild_cache"
 	@echo "... edit_cache"
+	@echo "... agv_logger"
+	@echo "... logger/logger.o"
+	@echo "... logger/logger.i"
+	@echo "... logger/logger.s"
 .PHONY : help
 
 

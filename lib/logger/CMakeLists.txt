@@ -1,9 +1,6 @@
-# lib/logger/CMakeLists.txt（纯头文件库，INTERFACE 目标）
-add_library(agv_logger INTERFACE)
-target_include_directories(agv_logger INTERFACE ${PROJECT_SOURCE_DIR}/include)
-
-# src/log_daemon/CMakeLists.txt
-add_executable(log_daemon main.cpp)
-target_link_libraries(log_daemon PRIVATE agv_logger systemd rt)
-# rt 提供 mq_open 等 POSIX MQ 函数
-# systemd 提供 sd_journal_send
+add_library(agv_logger STATIC logger.cpp)
+target_include_directories(agv_logger PUBLIC
+    ${PROJECT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_link_libraries(agv_logger PUBLIC rt)
