@@ -1,0 +1,34 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+../include/agv/log_msg.h
+cstdint
+-
+
+/home/upef/enavigate/src/log_daemon/main.cpp
+unistd.h
+-
+mqueue.h
+-
+systemd/sd-journal.h
+-
+poll.h
+-
+sys/signalfd.h
+-
+signal.h
+-
+cstdio
+-
+cstring
+-
+atomic
+-
+agv/log_msg.h
+/home/upef/enavigate/src/log_daemon/agv/log_msg.h
+

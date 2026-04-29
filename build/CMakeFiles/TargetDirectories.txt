@@ -1,0 +1,12 @@
+/home/upef/enavigate/build/CMakeFiles/rebuild_cache.dir
+/home/upef/enavigate/build/CMakeFiles/edit_cache.dir
+/home/upef/enavigate/build/lib/CMakeFiles/rebuild_cache.dir
+/home/upef/enavigate/build/lib/CMakeFiles/edit_cache.dir
+/home/upef/enavigate/build/src/CMakeFiles/rebuild_cache.dir
+/home/upef/enavigate/build/src/CMakeFiles/edit_cache.dir
+/home/upef/enavigate/build/src/log_daemon/CMakeFiles/rebuild_cache.dir
+/home/upef/enavigate/build/src/log_daemon/CMakeFiles/edit_cache.dir
+/home/upef/enavigate/build/src/log_daemon/CMakeFiles/log_daemon.dir
+/home/upef/enavigate/build/tests/CMakeFiles/rebuild_cache.dir
+/home/upef/enavigate/build/tests/CMakeFiles/edit_cache.dir
+/home/upef/enavigate/build/tests/CMakeFiles/test_logger.dir
