@@ -10,8 +10,18 @@ enum class LogLevel:uint8_t{
     WARN=4,
     ERROR=3,
     FATAL=2,
-
 };
+
+inline const char* level_str(LogLevel level) {
+    switch (level) {
+        case LogLevel::DEBUG: return "DEBUG";
+        case LogLevel::INFO:  return "INFO";
+        case LogLevel::WARN:  return "WARN";
+        case LogLevel::ERROR: return "ERROR";
+        case LogLevel::FATAL: return "FATAL";
+        default:              return "UNKNOWN";
+    }
+}
 
 struct LogMsg{
     LogLevel level;
@@ -19,3 +29,4 @@ struct LogMsg{
     char text[220];
 };
 static_assert(sizeof(LogMsg)<=MQ_LOG_MSGSIZE,"LogMsg size exceeds MQ_LOG_MSGSIZE");
+

@@ -131,6 +131,7 @@ src/log_daemon/clean: src/log_daemon/CMakeFiles/log_daemon.dir/clean
 # Directory level rules for directory tests
 
 # Recursive "all" directory target.
+tests/all: tests/CMakeFiles/inject_log.dir/all
 tests/all: tests/CMakeFiles/test_logger.dir/all
 
 .PHONY : tests/all
@@ -141,6 +142,7 @@ tests/preinstall:
 .PHONY : tests/preinstall
 
 # Recursive "clean" directory target.
+tests/clean: tests/CMakeFiles/inject_log.dir/clean
 tests/clean: tests/CMakeFiles/test_logger.dir/clean
 
 .PHONY : tests/clean
@@ -179,7 +181,7 @@ lib/CMakeFiles/agv_logger.dir/clean:
 src/log_daemon/CMakeFiles/log_daemon.dir/all:
 	$(MAKE) -f src/log_daemon/CMakeFiles/log_daemon.dir/build.make src/log_daemon/CMakeFiles/log_daemon.dir/depend
 	$(MAKE) -f src/log_daemon/CMakeFiles/log_daemon.dir/build.make src/log_daemon/CMakeFiles/log_daemon.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/upef/enavigate/build/CMakeFiles --progress-num=3,4 "Built target log_daemon"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/upef/enavigate/build/CMakeFiles --progress-num=5,6 "Built target log_daemon"
 .PHONY : src/log_daemon/CMakeFiles/log_daemon.dir/all
 
 # Build rule for subdir invocation for target.
@@ -200,13 +202,40 @@ src/log_daemon/CMakeFiles/log_daemon.dir/clean:
 .PHONY : src/log_daemon/CMakeFiles/log_daemon.dir/clean
 
 #=============================================================================
+# Target rules for target tests/CMakeFiles/inject_log.dir
+
+# All Build rule for target.
+tests/CMakeFiles/inject_log.dir/all: lib/CMakeFiles/agv_logger.dir/all
+	$(MAKE) -f tests/CMakeFiles/inject_log.dir/build.make tests/CMakeFiles/inject_log.dir/depend
+	$(MAKE) -f tests/CMakeFiles/inject_log.dir/build.make tests/CMakeFiles/inject_log.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/upef/enavigate/build/CMakeFiles --progress-num=3,4 "Built target inject_log"
+.PHONY : tests/CMakeFiles/inject_log.dir/all
+
+# Build rule for subdir invocation for target.
+tests/CMakeFiles/inject_log.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/upef/enavigate/build/CMakeFiles 4
+	$(MAKE) -f CMakeFiles/Makefile2 tests/CMakeFiles/inject_log.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/upef/enavigate/build/CMakeFiles 0
+.PHONY : tests/CMakeFiles/inject_log.dir/rule
+
+# Convenience name for target.
+inject_log: tests/CMakeFiles/inject_log.dir/rule
+
+.PHONY : inject_log
+
+# clean rule for target.
+tests/CMakeFiles/inject_log.dir/clean:
+	$(MAKE) -f tests/CMakeFiles/inject_log.dir/build.make tests/CMakeFiles/inject_log.dir/clean
+.PHONY : tests/CMakeFiles/inject_log.dir/clean
+
+#=============================================================================
 # Target rules for target tests/CMakeFiles/test_logger.dir
 
 # All Build rule for target.
 tests/CMakeFiles/test_logger.dir/all: lib/CMakeFiles/agv_logger.dir/all
 	$(MAKE) -f tests/CMakeFiles/test_logger.dir/build.make tests/CMakeFiles/test_logger.dir/depend
 	$(MAKE) -f tests/CMakeFiles/test_logger.dir/build.make tests/CMakeFiles/test_logger.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/upef/enavigate/build/CMakeFiles --progress-num=5,6 "Built target test_logger"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/upef/enavigate/build/CMakeFiles --progress-num=7,8 "Built target test_logger"
 .PHONY : tests/CMakeFiles/test_logger.dir/all
 
 # Build rule for subdir invocation for target.

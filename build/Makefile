@@ -137,6 +137,19 @@ log_daemon/fast:
 .PHONY : log_daemon/fast
 
 #=============================================================================
+# Target rules for targets named inject_log
+
+# Build rule for target.
+inject_log: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 inject_log
+.PHONY : inject_log
+
+# fast build rule for target.
+inject_log/fast:
+	$(MAKE) -f tests/CMakeFiles/inject_log.dir/build.make tests/CMakeFiles/inject_log.dir/build
+.PHONY : inject_log/fast
+
+#=============================================================================
 # Target rules for targets named test_logger
 
 # Build rule for target.
@@ -159,6 +172,7 @@ help:
 	@echo "... edit_cache"
 	@echo "... agv_logger"
 	@echo "... log_daemon"
+	@echo "... inject_log"
 	@echo "... test_logger"
 .PHONY : help
 

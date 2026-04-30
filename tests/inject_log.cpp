@@ -3,7 +3,8 @@
 #include <mqueue.h>
 #include <cstring>
 #include <cstdio>
-#include "../include/agv/log_msg.h"
+#include "agv/log_msg.h"
+#include "logger.h"
 
 int main(int argc, char* argv[]) {
     mqd_t mq = mq_open(MQ_LOG_NAME, O_WRONLY | O_NONBLOCK);

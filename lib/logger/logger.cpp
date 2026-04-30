@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <cstring>
 #include <cstdarg>
+#include "config/config.h"
 #include "logger.h"
 
 mqd_t agv_log_init(){
@@ -30,6 +31,9 @@ static void _agv_log(mqd_t mq, LogLevel level, const char* source, const char* t
     msg.source[sizeof(msg.source) - 1] = '\0';
     strncpy(msg.text, text, sizeof(msg.text) - 1);
     msg.text[sizeof(msg.text) - 1] = '\0';
+    #ifdef _AGV_PRINT_DEBUG
+        fprintf(stderr, "[%s|%s] %s\n", level_str(msg.level),msg.source, msg.text);
+    #endif
 
     if (mq_send(mq, (const char*)&msg, sizeof(msg), 0) == -1) {
         perror("Failed to send log message");

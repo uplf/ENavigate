@@ -10,4 +10,5 @@
 /home/upef/enavigate/build/src/log_daemon/CMakeFiles/log_daemon.dir
 /home/upef/enavigate/build/tests/CMakeFiles/rebuild_cache.dir
 /home/upef/enavigate/build/tests/CMakeFiles/edit_cache.dir
+/home/upef/enavigate/build/tests/CMakeFiles/inject_log.dir
 /home/upef/enavigate/build/tests/CMakeFiles/test_logger.dir

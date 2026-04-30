@@ -111,6 +111,21 @@ depend:
 .PHONY : depend
 
 # Convenience name for target.
+tests/CMakeFiles/inject_log.dir/rule:
+	cd /home/upef/enavigate/build && $(MAKE) -f CMakeFiles/Makefile2 tests/CMakeFiles/inject_log.dir/rule
+.PHONY : tests/CMakeFiles/inject_log.dir/rule
+
+# Convenience name for target.
+inject_log: tests/CMakeFiles/inject_log.dir/rule
+
+.PHONY : inject_log
+
+# fast build rule for target.
+inject_log/fast:
+	cd /home/upef/enavigate/build && $(MAKE) -f tests/CMakeFiles/inject_log.dir/build.make tests/CMakeFiles/inject_log.dir/build
+.PHONY : inject_log/fast
+
+# Convenience name for target.
 tests/CMakeFiles/test_logger.dir/rule:
 	cd /home/upef/enavigate/build && $(MAKE) -f CMakeFiles/Makefile2 tests/CMakeFiles/test_logger.dir/rule
 .PHONY : tests/CMakeFiles/test_logger.dir/rule
@@ -124,6 +139,33 @@ test_logger: tests/CMakeFiles/test_logger.dir/rule
 test_logger/fast:
 	cd /home/upef/enavigate/build && $(MAKE) -f tests/CMakeFiles/test_logger.dir/build.make tests/CMakeFiles/test_logger.dir/build
 .PHONY : test_logger/fast
+
+inject_log.o: inject_log.cpp.o
+
+.PHONY : inject_log.o
+
+# target to build an object file
+inject_log.cpp.o:
+	cd /home/upef/enavigate/build && $(MAKE) -f tests/CMakeFiles/inject_log.dir/build.make tests/CMakeFiles/inject_log.dir/inject_log.cpp.o
+.PHONY : inject_log.cpp.o
+
+inject_log.i: inject_log.cpp.i
+
+.PHONY : inject_log.i
+
+# target to preprocess a source file
+inject_log.cpp.i:
+	cd /home/upef/enavigate/build && $(MAKE) -f tests/CMakeFiles/inject_log.dir/build.make tests/CMakeFiles/inject_log.dir/inject_log.cpp.i
+.PHONY : inject_log.cpp.i
+
+inject_log.s: inject_log.cpp.s
+
+.PHONY : inject_log.s
+
+# target to generate assembly for a file
+inject_log.cpp.s:
+	cd /home/upef/enavigate/build && $(MAKE) -f tests/CMakeFiles/inject_log.dir/build.make tests/CMakeFiles/inject_log.dir/inject_log.cpp.s
+.PHONY : inject_log.cpp.s
 
 test_logger.o: test_logger.cpp.o
 
@@ -160,7 +202,11 @@ help:
 	@echo "... depend"
 	@echo "... rebuild_cache"
 	@echo "... edit_cache"
+	@echo "... inject_log"
 	@echo "... test_logger"
+	@echo "... inject_log.o"
+	@echo "... inject_log.i"
+	@echo "... inject_log.s"
 	@echo "... test_logger.o"
 	@echo "... test_logger.i"
 	@echo "... test_logger.s"
