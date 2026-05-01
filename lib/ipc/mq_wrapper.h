@@ -1,51 +1,10 @@
 #pragma once
-
-/**
- * mq_wrapper.h — POSIX MQ 封装
- *
- * 设计原则：
- *   - 用模板参数绑定消息类型，send/receive 直接操作结构体，
- *     无需调用方手动转型或记忆 msg_size。
- *   - 以 O_NONBLOCK 模式打开，配合 poll() 主循环使用，
- *     不在 receive() 内部阻塞。
- *   - 构造时不做系统调用，init() 时才打开队列，
- *     和 SignalHandler 保持一致的初始化风格。
- *   - 析构自动 mq_close，不负责 mq_unlink（只有 owner 进程负责删除队列）。
- *
- * 用法（接收端，加入 poll 循环）：
- *
- *   agv::MqReceiver<agv::TaskDispatchMsg> mq_task;
- *   mq_task.init(agv::kMqTaskDispatch, agv::kTaskDispatchMaxMsg,
- *                agv::kTaskDispatchMsgSize);
- *
- *   // 加入 poll
- *   fds[FD_MQ].fd     = mq_task.get_fd();
- *   fds[FD_MQ].events = POLLIN;
- *
- *   // poll 触发后
- *   agv::TaskDispatchMsg msg;
- *   unsigned prio;
- *   while (mq_task.receive(msg, prio)) {
- *       handle(msg);
- *   }
- *
- * 用法（发送端）：
- *
- *   agv::MqSender<agv::TaskDispatchMsg> mq_pub;
- *   mq_pub.init(agv::kMqTaskDispatch);
- *
- *   auto msg = agv::TaskDispatchMsg::assign(car_id, target);
- *   mq_pub.send(msg, agv::kPrioNormal);
- */
-
 #include "agv/mq_msg.h"
-
 #include <cerrno>
 #include <cstring>
 #include <stdexcept>
 #include <string>
 #include <vector>
-
 #include <fcntl.h>
 #include <mqueue.h>
 #include <unistd.h>
@@ -302,3 +261,41 @@ private:
 };
 
 } // namespace agv
+
+/**
+ * mq_wrapper.h — POSIX MQ 封装
+ *
+ * 设计原则：
+ *   - 用模板参数绑定消息类型，send/receive 直接操作结构体，
+ *     无需调用方手动转型或记忆 msg_size。
+ *   - 以 O_NONBLOCK 模式打开，配合 poll() 主循环使用，
+ *     不在 receive() 内部阻塞。
+ *   - 构造时不做系统调用，init() 时才打开队列，
+ *     和 SignalHandler 保持一致的初始化风格。
+ *   - 析构自动 mq_close，不负责 mq_unlink（只有 owner 进程负责删除队列）。
+ *
+ * 用法（接收端，加入 poll 循环）：
+ *
+ *   agv::MqReceiver<agv::TaskDispatchMsg> mq_task;
+ *   mq_task.init(agv::kMqTaskDispatch, agv::kTaskDispatchMaxMsg,
+ *                agv::kTaskDispatchMsgSize);
+ *
+ *   // 加入 poll
+ *   fds[FD_MQ].fd     = mq_task.get_fd();
+ *   fds[FD_MQ].events = POLLIN;
+ *
+ *   // poll 触发后
+ *   agv::TaskDispatchMsg msg;
+ *   unsigned prio;
+ *   while (mq_task.receive(msg, prio)) {
+ *       handle(msg);
+ *   }
+ *
+ * 用法（发送端）：
+ *
+ *   agv::MqSender<agv::TaskDispatchMsg> mq_pub;
+ *   mq_pub.init(agv::kMqTaskDispatch);
+ *
+ *   auto msg = agv::TaskDispatchMsg::assign(car_id, target);
+ *   mq_pub.send(msg, agv::kPrioNormal);
+ */

@@ -44,7 +44,7 @@
  *   ...
  */
 
-#include "../lib/ipc/mq_wrapper.h"
+#include "mq_wrapper.h"
 #include "../lib/ipc/signal_handler.h"
 
 #include <cstdio>

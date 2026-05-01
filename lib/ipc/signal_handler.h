@@ -1,49 +1,10 @@
 #pragma once
 //注明：本部分的规划与编写均是ai完成，本人只是在其中调试&学习
-/**
- * signal_handler.h — 统一信号处理框架
- *
- * 设计原则：
- *   - 进程启动时用 sigprocmask 阻塞 SIGTERM/SIGINT/SIGUSR1，
- *     不让内核异步递送，彻底消除信号处理函数的异步安全问题。
- *   - 用 signalfd 把信号变成一个普通可读 fd，
- *     统一纳入进程的 poll() 主循环，与 MQ fd、timerfd 平等处理。
- *   - 对外只暴露三个接口：init / get_fd / handle_read。
- *
- * 用法（每个进程 main.cpp 开头）：
- *
- *   #include "signal_handler.h"
- *
- *   int main() {
- *       agv::SignalHandler sig;
- *       sig.init();           // 阻塞信号 + 创建 signalfd
- *
- *       struct pollfd fds[2];
- *       fds[0].fd     = sig.get_fd();
- *       fds[0].events = POLLIN;
- *       // fds[1] = mq_fd / timerfd / ...
- *
- *       while (!sig.shutdown_requested()) {
- *           int ret = poll(fds, 2, -1);
- *           if (ret < 0) { if (errno == EINTR) continue; break; }
- *
- *           if (fds[0].revents & POLLIN) {
- *               sig.handle_read();   // 内部设置 g_shutdown，并处理 SIGUSR1
- *           }
- *           // 处理其他 fd ...
- *       }
- *
- *       // 退出序列 ...
- *       return 0;
- *   }
- */
-
 #include <atomic>
 #include <csignal>
 #include <cstring>
 #include <stdexcept>
 #include <string>
-
 #include <poll.h>
 #include <sys/signalfd.h>
 #include <unistd.h>
@@ -173,3 +134,44 @@ private:
 };
 
 } // namespace agv
+
+
+
+
+/**
+ * signal_handler.h — 统一信号处理框架
+ *
+ * 设计原则：
+ *   - 进程启动时用 sigprocmask 阻塞 SIGTERM/SIGINT/SIGUSR1，
+ *     不让内核异步递送，彻底消除信号处理函数的异步安全问题。
+ *   - 用 signalfd 把信号变成一个普通可读 fd，
+ *     统一纳入进程的 poll() 主循环，与 MQ fd、timerfd 平等处理。
+ *   - 对外只暴露三个接口：init / get_fd / handle_read。
+ *
+ * 用法（每个进程 main.cpp 开头）：
+ *
+ *   #include "signal_handler.h"
+ *
+ *   int main() {
+ *       agv::SignalHandler sig;
+ *       sig.init();           // 阻塞信号 + 创建 signalfd
+ *
+ *       struct pollfd fds[2];
+ *       fds[0].fd     = sig.get_fd();
+ *       fds[0].events = POLLIN;
+ *       // fds[1] = mq_fd / timerfd / ...
+ *
+ *       while (!sig.shutdown_requested()) {
+ *           int ret = poll(fds, 2, -1);
+ *           if (ret < 0) { if (errno == EINTR) continue; break; }
+ *
+ *           if (fds[0].revents & POLLIN) {
+ *               sig.handle_read();   // 内部设置 g_shutdown，并处理 SIGUSR1
+ *           }
+ *           // 处理其他 fd ...
+ *       }
+ *
+ *       // 退出序列 ...
+ *       return 0;
+ *   }
+ */

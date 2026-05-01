@@ -8,5 +8,20 @@
 //#define _AGV_PRINT_DEBUG
 
 //****常量区-边界常量 */
+//最大车数
+#define AGV_MAX_CARS 2
 //最大的节点数
 #define AGV_MAX_NODES 64
+//最大路径数
+#define AGV_MAX_PATHS 128
+//最大的规划所包含的路径长度
+#define AGV_MAX_PATHLEN 100
+
+//节点名称最大长度
+#define AGC_MAX_NAME 16
+//节点标签最大长度
+#define AGC_MAX_LABEL 5
+
+
+
+#define DO_NOT_USE _Static_assert(0, "This macro is not allowed")
