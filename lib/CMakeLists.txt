@@ -5,6 +5,10 @@ target_include_directories(agv_logger PUBLIC
 )
 target_link_libraries(agv_logger PUBLIC rt)
 
+add_library(agv_ipc INTERFACE)
+target_include_directories(agv_ipc INTERFACE
+    ${CMAKE_CURRENT_SOURCE_DIR}/ipc
+)
 # ipc 有 .cpp 文件，编译成静态库
 #add_library(agv_ipc STATIC
 #    ipc/mq_wrapper.cpp

@@ -131,21 +131,45 @@ src/log_daemon/clean: src/log_daemon/CMakeFiles/log_daemon.dir/clean
 # Directory level rules for directory tests
 
 # Recursive "all" directory target.
+tests/all: tests/CMakeFiles/test_secureExit.dir/all
 tests/all: tests/CMakeFiles/inject_log.dir/all
 tests/all: tests/CMakeFiles/test_logger.dir/all
+tests/all: tests/mq/all
 
 .PHONY : tests/all
 
 # Recursive "preinstall" directory target.
-tests/preinstall:
+tests/preinstall: tests/mq/preinstall
 
 .PHONY : tests/preinstall
 
 # Recursive "clean" directory target.
+tests/clean: tests/CMakeFiles/test_secureExit.dir/clean
 tests/clean: tests/CMakeFiles/inject_log.dir/clean
 tests/clean: tests/CMakeFiles/test_logger.dir/clean
+tests/clean: tests/mq/clean
 
 .PHONY : tests/clean
+
+#=============================================================================
+# Directory level rules for directory tests/mq
+
+# Recursive "all" directory target.
+tests/mq/all: tests/mq/CMakeFiles/test_mq2.dir/all
+tests/mq/all: tests/mq/CMakeFiles/test_mq1.dir/all
+
+.PHONY : tests/mq/all
+
+# Recursive "preinstall" directory target.
+tests/mq/preinstall:
+
+.PHONY : tests/mq/preinstall
+
+# Recursive "clean" directory target.
+tests/mq/clean: tests/mq/CMakeFiles/test_mq2.dir/clean
+tests/mq/clean: tests/mq/CMakeFiles/test_mq1.dir/clean
+
+.PHONY : tests/mq/clean
 
 #=============================================================================
 # Target rules for target lib/CMakeFiles/agv_logger.dir
@@ -202,6 +226,33 @@ src/log_daemon/CMakeFiles/log_daemon.dir/clean:
 .PHONY : src/log_daemon/CMakeFiles/log_daemon.dir/clean
 
 #=============================================================================
+# Target rules for target tests/CMakeFiles/test_secureExit.dir
+
+# All Build rule for target.
+tests/CMakeFiles/test_secureExit.dir/all:
+	$(MAKE) -f tests/CMakeFiles/test_secureExit.dir/build.make tests/CMakeFiles/test_secureExit.dir/depend
+	$(MAKE) -f tests/CMakeFiles/test_secureExit.dir/build.make tests/CMakeFiles/test_secureExit.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/upef/enavigate/build/CMakeFiles --progress-num=13,14 "Built target test_secureExit"
+.PHONY : tests/CMakeFiles/test_secureExit.dir/all
+
+# Build rule for subdir invocation for target.
+tests/CMakeFiles/test_secureExit.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/upef/enavigate/build/CMakeFiles 2
+	$(MAKE) -f CMakeFiles/Makefile2 tests/CMakeFiles/test_secureExit.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/upef/enavigate/build/CMakeFiles 0
+.PHONY : tests/CMakeFiles/test_secureExit.dir/rule
+
+# Convenience name for target.
+test_secureExit: tests/CMakeFiles/test_secureExit.dir/rule
+
+.PHONY : test_secureExit
+
+# clean rule for target.
+tests/CMakeFiles/test_secureExit.dir/clean:
+	$(MAKE) -f tests/CMakeFiles/test_secureExit.dir/build.make tests/CMakeFiles/test_secureExit.dir/clean
+.PHONY : tests/CMakeFiles/test_secureExit.dir/clean
+
+#=============================================================================
 # Target rules for target tests/CMakeFiles/inject_log.dir
 
 # All Build rule for target.
@@ -254,6 +305,60 @@ test_logger: tests/CMakeFiles/test_logger.dir/rule
 tests/CMakeFiles/test_logger.dir/clean:
 	$(MAKE) -f tests/CMakeFiles/test_logger.dir/build.make tests/CMakeFiles/test_logger.dir/clean
 .PHONY : tests/CMakeFiles/test_logger.dir/clean
+
+#=============================================================================
+# Target rules for target tests/mq/CMakeFiles/test_mq2.dir
+
+# All Build rule for target.
+tests/mq/CMakeFiles/test_mq2.dir/all:
+	$(MAKE) -f tests/mq/CMakeFiles/test_mq2.dir/build.make tests/mq/CMakeFiles/test_mq2.dir/depend
+	$(MAKE) -f tests/mq/CMakeFiles/test_mq2.dir/build.make tests/mq/CMakeFiles/test_mq2.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/upef/enavigate/build/CMakeFiles --progress-num=11,12 "Built target test_mq2"
+.PHONY : tests/mq/CMakeFiles/test_mq2.dir/all
+
+# Build rule for subdir invocation for target.
+tests/mq/CMakeFiles/test_mq2.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/upef/enavigate/build/CMakeFiles 2
+	$(MAKE) -f CMakeFiles/Makefile2 tests/mq/CMakeFiles/test_mq2.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/upef/enavigate/build/CMakeFiles 0
+.PHONY : tests/mq/CMakeFiles/test_mq2.dir/rule
+
+# Convenience name for target.
+test_mq2: tests/mq/CMakeFiles/test_mq2.dir/rule
+
+.PHONY : test_mq2
+
+# clean rule for target.
+tests/mq/CMakeFiles/test_mq2.dir/clean:
+	$(MAKE) -f tests/mq/CMakeFiles/test_mq2.dir/build.make tests/mq/CMakeFiles/test_mq2.dir/clean
+.PHONY : tests/mq/CMakeFiles/test_mq2.dir/clean
+
+#=============================================================================
+# Target rules for target tests/mq/CMakeFiles/test_mq1.dir
+
+# All Build rule for target.
+tests/mq/CMakeFiles/test_mq1.dir/all:
+	$(MAKE) -f tests/mq/CMakeFiles/test_mq1.dir/build.make tests/mq/CMakeFiles/test_mq1.dir/depend
+	$(MAKE) -f tests/mq/CMakeFiles/test_mq1.dir/build.make tests/mq/CMakeFiles/test_mq1.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/upef/enavigate/build/CMakeFiles --progress-num=9,10 "Built target test_mq1"
+.PHONY : tests/mq/CMakeFiles/test_mq1.dir/all
+
+# Build rule for subdir invocation for target.
+tests/mq/CMakeFiles/test_mq1.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/upef/enavigate/build/CMakeFiles 2
+	$(MAKE) -f CMakeFiles/Makefile2 tests/mq/CMakeFiles/test_mq1.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/upef/enavigate/build/CMakeFiles 0
+.PHONY : tests/mq/CMakeFiles/test_mq1.dir/rule
+
+# Convenience name for target.
+test_mq1: tests/mq/CMakeFiles/test_mq1.dir/rule
+
+.PHONY : test_mq1
+
+# clean rule for target.
+tests/mq/CMakeFiles/test_mq1.dir/clean:
+	$(MAKE) -f tests/mq/CMakeFiles/test_mq1.dir/build.make tests/mq/CMakeFiles/test_mq1.dir/clean
+.PHONY : tests/mq/CMakeFiles/test_mq1.dir/clean
 
 #=============================================================================
 # Special targets to cleanup operation of make.

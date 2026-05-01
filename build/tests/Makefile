@@ -111,6 +111,21 @@ depend:
 .PHONY : depend
 
 # Convenience name for target.
+tests/CMakeFiles/test_secureExit.dir/rule:
+	cd /home/upef/enavigate/build && $(MAKE) -f CMakeFiles/Makefile2 tests/CMakeFiles/test_secureExit.dir/rule
+.PHONY : tests/CMakeFiles/test_secureExit.dir/rule
+
+# Convenience name for target.
+test_secureExit: tests/CMakeFiles/test_secureExit.dir/rule
+
+.PHONY : test_secureExit
+
+# fast build rule for target.
+test_secureExit/fast:
+	cd /home/upef/enavigate/build && $(MAKE) -f tests/CMakeFiles/test_secureExit.dir/build.make tests/CMakeFiles/test_secureExit.dir/build
+.PHONY : test_secureExit/fast
+
+# Convenience name for target.
 tests/CMakeFiles/inject_log.dir/rule:
 	cd /home/upef/enavigate/build && $(MAKE) -f CMakeFiles/Makefile2 tests/CMakeFiles/inject_log.dir/rule
 .PHONY : tests/CMakeFiles/inject_log.dir/rule
@@ -194,6 +209,33 @@ test_logger.cpp.s:
 	cd /home/upef/enavigate/build && $(MAKE) -f tests/CMakeFiles/test_logger.dir/build.make tests/CMakeFiles/test_logger.dir/test_logger.cpp.s
 .PHONY : test_logger.cpp.s
 
+test_secureExit.o: test_secureExit.cpp.o
+
+.PHONY : test_secureExit.o
+
+# target to build an object file
+test_secureExit.cpp.o:
+	cd /home/upef/enavigate/build && $(MAKE) -f tests/CMakeFiles/test_secureExit.dir/build.make tests/CMakeFiles/test_secureExit.dir/test_secureExit.cpp.o
+.PHONY : test_secureExit.cpp.o
+
+test_secureExit.i: test_secureExit.cpp.i
+
+.PHONY : test_secureExit.i
+
+# target to preprocess a source file
+test_secureExit.cpp.i:
+	cd /home/upef/enavigate/build && $(MAKE) -f tests/CMakeFiles/test_secureExit.dir/build.make tests/CMakeFiles/test_secureExit.dir/test_secureExit.cpp.i
+.PHONY : test_secureExit.cpp.i
+
+test_secureExit.s: test_secureExit.cpp.s
+
+.PHONY : test_secureExit.s
+
+# target to generate assembly for a file
+test_secureExit.cpp.s:
+	cd /home/upef/enavigate/build && $(MAKE) -f tests/CMakeFiles/test_secureExit.dir/build.make tests/CMakeFiles/test_secureExit.dir/test_secureExit.cpp.s
+.PHONY : test_secureExit.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -201,6 +243,7 @@ help:
 	@echo "... clean"
 	@echo "... depend"
 	@echo "... rebuild_cache"
+	@echo "... test_secureExit"
 	@echo "... edit_cache"
 	@echo "... inject_log"
 	@echo "... test_logger"
@@ -210,6 +253,9 @@ help:
 	@echo "... test_logger.o"
 	@echo "... test_logger.i"
 	@echo "... test_logger.s"
+	@echo "... test_secureExit.o"
+	@echo "... test_secureExit.i"
+	@echo "... test_secureExit.s"
 .PHONY : help
 
 

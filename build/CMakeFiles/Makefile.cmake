@@ -14,6 +14,7 @@ set(CMAKE_MAKEFILE_DEPENDS
   "../src/CMakeLists.txt"
   "../src/log_daemon/CMakeLists.txt"
   "../tests/CMakeLists.txt"
+  "../tests/mq/CMakeLists.txt"
   "/usr/share/cmake-3.16/Modules/CMakeCXXInformation.cmake"
   "/usr/share/cmake-3.16/Modules/CMakeCheckCompilerFlagCommonPatterns.cmake"
   "/usr/share/cmake-3.16/Modules/CMakeCommonLanguageInclude.cmake"
@@ -45,12 +46,16 @@ set(CMAKE_MAKEFILE_PRODUCTS
   "src/CMakeFiles/CMakeDirectoryInformation.cmake"
   "src/log_daemon/CMakeFiles/CMakeDirectoryInformation.cmake"
   "tests/CMakeFiles/CMakeDirectoryInformation.cmake"
+  "tests/mq/CMakeFiles/CMakeDirectoryInformation.cmake"
   )
 
 # Dependency information for all targets:
 set(CMAKE_DEPEND_INFO_FILES
   "lib/CMakeFiles/agv_logger.dir/DependInfo.cmake"
   "src/log_daemon/CMakeFiles/log_daemon.dir/DependInfo.cmake"
+  "tests/CMakeFiles/test_secureExit.dir/DependInfo.cmake"
   "tests/CMakeFiles/inject_log.dir/DependInfo.cmake"
   "tests/CMakeFiles/test_logger.dir/DependInfo.cmake"
+  "tests/mq/CMakeFiles/test_mq2.dir/DependInfo.cmake"
+  "tests/mq/CMakeFiles/test_mq1.dir/DependInfo.cmake"
   )

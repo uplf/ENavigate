@@ -137,6 +137,19 @@ log_daemon/fast:
 .PHONY : log_daemon/fast
 
 #=============================================================================
+# Target rules for targets named test_secureExit
+
+# Build rule for target.
+test_secureExit: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 test_secureExit
+.PHONY : test_secureExit
+
+# fast build rule for target.
+test_secureExit/fast:
+	$(MAKE) -f tests/CMakeFiles/test_secureExit.dir/build.make tests/CMakeFiles/test_secureExit.dir/build
+.PHONY : test_secureExit/fast
+
+#=============================================================================
 # Target rules for targets named inject_log
 
 # Build rule for target.
@@ -162,6 +175,32 @@ test_logger/fast:
 	$(MAKE) -f tests/CMakeFiles/test_logger.dir/build.make tests/CMakeFiles/test_logger.dir/build
 .PHONY : test_logger/fast
 
+#=============================================================================
+# Target rules for targets named test_mq2
+
+# Build rule for target.
+test_mq2: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 test_mq2
+.PHONY : test_mq2
+
+# fast build rule for target.
+test_mq2/fast:
+	$(MAKE) -f tests/mq/CMakeFiles/test_mq2.dir/build.make tests/mq/CMakeFiles/test_mq2.dir/build
+.PHONY : test_mq2/fast
+
+#=============================================================================
+# Target rules for targets named test_mq1
+
+# Build rule for target.
+test_mq1: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 test_mq1
+.PHONY : test_mq1
+
+# fast build rule for target.
+test_mq1/fast:
+	$(MAKE) -f tests/mq/CMakeFiles/test_mq1.dir/build.make tests/mq/CMakeFiles/test_mq1.dir/build
+.PHONY : test_mq1/fast
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -172,8 +211,11 @@ help:
 	@echo "... edit_cache"
 	@echo "... agv_logger"
 	@echo "... log_daemon"
+	@echo "... test_secureExit"
 	@echo "... inject_log"
 	@echo "... test_logger"
+	@echo "... test_mq2"
+	@echo "... test_mq1"
 .PHONY : help
 
 

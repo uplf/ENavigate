@@ -3,7 +3,7 @@
 /**
  * graceful_exit.h — 统一退出序列
  *
- * 所有进程在跳出主循环后调用 GracefulExit::run()，
+ * 所有进程在跳出主循环后调用 SecureExit::run()，
  * 按固定顺序清理资源，避免写 SHM 的进程直接退出造成数据损坏。
  *
  * 退出序列（参考开发文档）：
@@ -15,7 +15,7 @@
  *
  * 用法：
  *
- *   agv::GracefulExit exit_seq("planner");
+ *   agv::SecureExit exit_seq("planner");
  *
  *   // 注册清理动作（LIFO 顺序执行，类似 atexit）
  *   exit_seq.add_cleanup("close mq", [&]{ mq_close(mq); });
@@ -40,14 +40,14 @@ inline int sd_notify(int /*unset_environment*/, const char* /*state*/) { return 
  
 namespace agv {
  
-class GracefulExit {
+class SecureExit {
 public:
     struct CleanupEntry {
         std::string            name;
         std::function<void()>  fn;
     };
  
-    explicit GracefulExit(const char* proc_name) : proc_name_(proc_name) {}
+    explicit SecureExit(const char* proc_name) : proc_name_(proc_name) {}
  
     /**
      * 注册一个清理动作，名称仅用于日志。

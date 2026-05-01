@@ -9,6 +9,11 @@
 /home/upef/enavigate/build/src/log_daemon/CMakeFiles/edit_cache.dir
 /home/upef/enavigate/build/src/log_daemon/CMakeFiles/log_daemon.dir
 /home/upef/enavigate/build/tests/CMakeFiles/rebuild_cache.dir
+/home/upef/enavigate/build/tests/CMakeFiles/test_secureExit.dir
 /home/upef/enavigate/build/tests/CMakeFiles/edit_cache.dir
 /home/upef/enavigate/build/tests/CMakeFiles/inject_log.dir
 /home/upef/enavigate/build/tests/CMakeFiles/test_logger.dir
+/home/upef/enavigate/build/tests/mq/CMakeFiles/rebuild_cache.dir
+/home/upef/enavigate/build/tests/mq/CMakeFiles/edit_cache.dir
+/home/upef/enavigate/build/tests/mq/CMakeFiles/test_mq2.dir
+/home/upef/enavigate/build/tests/mq/CMakeFiles/test_mq1.dir

@@ -1,24 +1,5 @@
-/**
- * proc_main_template.h — 进程 main() 骨架模板
- *
- * 每个业务进程的 main.cpp 复制此模板，
- * 将 TODO 部分替换为自己的资源初始化和业务逻辑即可。
- *
- * 依赖：
- *   lib/ipc/signal_handler.h
- *   lib/ipc/secure_exit.h
- *
- * 编译示例：
- *   g++ -std=c++17 -o planner planner_main.cpp \
- *       -I../../include -I../../lib \
- *       -lrt -lpthread
- *   （若需要 sd_notify：额外加 -lsystemd）
- */
-
-#pragma once
-
-#include "ipc/signal_handler.h"
-#include "ipc/secure_exit.h"
+#include "signal_handler.h"
+#include "secure_exit.h"
 
 #include <cerrno>
 #include <cstring>
@@ -26,19 +7,19 @@
 
 #include <poll.h>
 
+#define PROC_NAME "testing"
 // ── 可选：SIGUSR1 时的调试状态 dump ─────────────────────────────────────
 static void on_sigusr1(const char* proc_name) {
-    // TODO: 打印当前进程的关键状态到 stderr 或 journald
     fprintf(stderr, "[%s] SIGUSR1: dump state here\n", proc_name);
 }
 
 // ── 主函数模板 ────────────────────────────────────────────────────────────
-inline int proc_main_template(const char* PROC_NAME) {
+int main() {
 
     // ════════════════════════════════════════════════════
     // Step 1: 最先初始化信号处理（必须在任何线程创建之前）
     // ════════════════════════════════════════════════════
-    agv::SignalHandler sig(PROC_NAME, on_sigusr1);
+    agv::SignalHandler sig("testing", on_sigusr1);
     try {
         sig.init();
     } catch (const std::exception& e) {
@@ -61,11 +42,12 @@ inline int proc_main_template(const char* PROC_NAME) {
     // ════════════════════════════════════════════════════
     // Step 3: 注册退出清理序列（后注册先执行）
     // ════════════════════════════════════════════════════
-    agv::SecureExit exit_seq(PROC_NAME);
+    agv::SecureExit exit_seq("testing");
 
     // TODO: exit_seq.add_cleanup("mq_close", [&]{ mq_close(mq); });
     // TODO: exit_seq.add_cleanup("shm_munmap", [&]{ munmap(shm_ptr, shm_size); shm_close(shm_fd); });
     // TODO: exit_seq.add_cleanup("timerfd_close", [&]{ close(tfd); });
+    exit_seq.add_cleanup("hello-clean1",[&]{fprintf(stderr,"doing-cleaning");});
 
     // ════════════════════════════════════════════════════
     // Step 4: 组建 poll 监听数组
@@ -82,7 +64,7 @@ inline int proc_main_template(const char* PROC_NAME) {
     fds[FD_MQ].fd      = -1;   // TODO: 替换为实际 MQ fd，-1 表示暂时禁用
     fds[FD_MQ].events  = POLLIN;
 
-    fprintf(stderr, "[%s] INFO: started, entering poll loop\n", PROC_NAME);
+    fprintf(stderr, "[%s] INFO: started, entering poll loop\n", "testing");
 
     // ════════════════════════════════════════════════════
     // Step 5: poll 主循环
@@ -127,10 +109,11 @@ inline int proc_main_template(const char* PROC_NAME) {
     //   - exit_seq.run() 内部逆序执行所有清理回调，
     //     最后 sd_notify("STOPPING=1") + exit(0)
     // ════════════════════════════════════════════════════
-    fprintf(stderr, "[%s] INFO: shutdown_requested, exiting\n", PROC_NAME);
+    fprintf(stderr, "[%s] INFO: shutdown_requested, exiting\n", "testing");
 
     // TODO: 若有"当前任务"需要等待完成：
     //   wait_for_current_task_done();
 
     exit_seq.run(200);  // 等待最多 200ms，然后清理退出
+    fprintf(stderr, "[%s] INFOB: shutdown_requested, exiting\n", "testing");
 }
