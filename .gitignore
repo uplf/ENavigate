@@ -2,3 +2,5 @@ build/
 *dev*.md
 .vscode/
 .idea/
+.DS_Store
+*.*workspace

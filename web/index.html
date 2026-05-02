@@ -131,9 +131,15 @@ body {
   background: var(--bg2);
   border: 1px solid var(--border);
   border-radius: 6px;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
-#topo-svg { display: block; width: 100%; }
+
+#topo-svg {
+  display: block;
+  width: 100%;
+  min-width: 920px;
+}
 
 .sel-info {
   margin-top: 8px;
@@ -318,7 +324,7 @@ body {
       <div style="font-family:var(--mono);font-size:10px;color:var(--text2)">点击节点单选 · 点击路径多选</div>
     </div>
     <div id="topo-wrap">
-      <svg id="topo-svg" viewBox="0 0 720 380" xmlns="http://www.w3.org/2000/svg"></svg>
+      <svg id="topo-svg" viewBox="0 0 920 380" xmlns="http://www.w3.org/2000/svg"></svg>
     </div>
     <div class="sel-info" id="sel-info">未选中任何节点或路径</div>
     <div class="legend">
@@ -380,31 +386,51 @@ body {
 <script>
 /* ───────────────────────── 拓扑数据 ───────────────────────── */
 let NODES = [
-  {id:'N1', label:'N1', x:80,  y:80, name:'仓储区'},
-  {id:'N2', label:'N2', x:240, y:80,  name:'分拣站A'},
-  {id:'N3', label:'N3', x:240, y:200,  name:'分拣站B'},
-  {id:'N4', label:'N4', x:240, y:320, name:'装载区'},
-  {id:'N5', label:'N5', x:400, y:80, name:'充电站'},
-  {id:'N6', label:'N6', x:400, y:200, name:'充电站'},
-  {id:'N7', label:'N7', x:400, y:320, name:'充电站'},
-  {id:'N8', label:'N8', x:560, y:80, name:'充电站'},
-  {id:'N9', label:'N9', x:560, y:200, name:'充电站'},
-  {id:'N10', label:'N10', x:560, y:320, name:'充电站'},
+  {id:'N1',  label:'N1',  x:70,  y:70,  name:'起始点'},
+  {id:'N2',  label:'N2',  x:70,  y:190, name:'起始点'},
+  {id:'N3',  label:'N3',  x:70,  y:310, name:'起始点'},
+
+  {id:'N4',  label:'N4',  x:260, y:70,  name:''},
+  {id:'N5',  label:'N5',  x:260, y:190, name:''},
+  {id:'N6',  label:'N6',  x:260, y:310, name:''},
+
+  {id:'N7',  label:'N7',  x:450, y:70,  name:''},
+  {id:'N8',  label:'N8',  x:450, y:190, name:''},
+  {id:'N9',  label:'N9',  x:450, y:310, name:''},
+
+  {id:'N10', label:'N10', x:640, y:70,  name:''},
+  {id:'N11', label:'N11', x:640, y:190, name:''},
+  {id:'N12', label:'N12', x:640, y:310, name:''},
+
+  {id:'N13', label:'N13', x:830, y:70,  name:'结束点'},
+  {id:'N14', label:'N14', x:830, y:190, name:'结束点'},
+  {id:'N15', label:'N15', x:830, y:310, name:'结束点'},
 ];
 let EDGES = [
-  {id:'L1', from:'N1', to:'N2'},
-  {id:'L2', from:'N2', to:'N5'},
-  {id:'L3', from:'N2', to:'N3'},
-  {id:'L4', from:'N3', to:'N6'},
-  {id:'L5', from:'N3', to:'N4'},
-  {id:'L6', from:'N4', to:'N7'},
-  {id:'L7', from:'N5', to:'N8'},
-  {id:'L8', from:'N5', to:'N6'},
-  {id:'L9', from:'N6', to:'N9'},
-  {id:'L10', from:'N6', to:'N7'},
-  {id:'L11', from:'N7', to:'N10'},
-  {id:'L12', from:'N8', to:'N9'},
-  {id:'L13', from:'N9', to:'N10'},
+  {id:'L1',  from:'N1',  to:'N4'},
+  {id:'L2',  from:'N2',  to:'N5'},
+  {id:'L3',  from:'N3',  to:'N6'},
+
+  {id:'L4',  from:'N4',  to:'N5'},
+  {id:'L5',  from:'N5',  to:'N6'},
+
+  {id:'L6',  from:'N4',  to:'N7'},
+  {id:'L7',  from:'N5',  to:'N8'},
+  {id:'L8',  from:'N6',  to:'N9'},
+
+  {id:'L9',  from:'N7',  to:'N8'},
+  {id:'L10', from:'N8',  to:'N9'},
+
+  {id:'L11', from:'N7',  to:'N10'},
+  {id:'L12', from:'N8',  to:'N11'},
+  {id:'L13', from:'N9',  to:'N12'},
+
+  {id:'L14', from:'N10', to:'N11'},
+  {id:'L15', from:'N11', to:'N12'},
+
+  {id:'L16', from:'N10', to:'N13'},
+  {id:'L17', from:'N11', to:'N14'},
+  {id:'L18', from:'N12', to:'N15'},
 ];
 
 /* ───────────────────────── 配置 ───────────────────────── */
@@ -542,8 +568,8 @@ function renderSVG(){
   let h = '';
 
   // grid lines (subtle)
-  for(let x=0;x<=720;x+=60) h+=`<line x1="${x}" y1="0" x2="${x}" y2="380" stroke="#1a1f27" stroke-width="1"/>`;
-  for(let y=0;y<=380;y+=60) h+=`<line x1="0" y1="${y}" x2="720" y2="${y}" stroke="#1a1f27" stroke-width="1"/>`;
+  for(let x=0;x<=920;x+=60) h+=`<line x1="${x}" y1="0" x2="${x}" y2="380" stroke="#1a1f27" stroke-width="1"/>`;
+  for(let y=0;y<=380;y+=60) h+=`<line x1="0" y1="${y}" x2="920" y2="${y}" stroke="#1a1f27" stroke-width="1"/>`;
 
   // edges
   EDGES.forEach(e=>{
@@ -694,7 +720,6 @@ function renderCars(){
       </div>
       <div class="car-meta">
         <span>位置: ${car.pos||'--'}</span>
-        ${isActiveRouteCar(car) ? `<span>当前路径: ${getCarPathLabel(car)}</span>` : ''}
         ${car.task?.from && car.task?.to ? `<span>任务: ${car.task.from}→${car.task.to}</span>` : ''}
       </div>
     </div>`;
@@ -832,12 +857,20 @@ function fetchStatus(){
   })
     .then(response => {
       clearTimeout(timeoutId);
+      if(response.status === 404){
+        addLog('err', `[404错误] 刷新状态失败：接口不存在 / 请求地址错误`);
+        setBroadcast('[404错误] 刷新状态失败');
+        return null;
+      }
+
       if(!response.ok){
         throw new Error(`HTTP错误! 状态: ${response.status}`);
       }
+
       return response.json();
     })
     .then(data => {
+      if(!data) return;
       applyJSON(data);
     })
     .catch(error => {
@@ -964,43 +997,65 @@ function generateMockJSON(){
       N1:{status:'idle'}, N2:{status:'idle'}, N3:{status:'idle'},
       N4:{status:'idle'}, N5:{status:'idle'}, N6:{status:'idle'},
       N7:{status:'idle'}, N8:{status:'idle'}, N9:{status:'idle'},
-      N10:{status:'idle'}
+      N10:{status:'idle'},N11:{status:'idle'},N12:{status:'idle'},
+      N13:{status:'idle'},N14:{status:'idle'},N15:{status:'idle'},
     },
     edges:{
       L1:{status:'fault_temp'},  L2:{status:'fault_repair'},  L3:{status:'occupied'},
       L4:{status:'idle'},  L5:{status:'occupied'}, L6:{status:'idle'},
       L7:{status:'idle'},  L8:{status:'blocked'}, L9:{status:'idle'},
       L10:{status:'idle'}, L11:{status:'idle'}, L12:{status:'idle'},
-      L13:{status:'idle'}
+      L13:{status:'idle'}, L14:{status:'idle'}, L15:{status:'idle'},
+      L16:{status:'idle'}, L17:{status:'idle'}, L18:{status:'idle'},
     },
     topology: {
-      nodes: [
-        {id:'N1', label:'N1', x:80,  y:80, name:'仓储区'},
-        {id:'N2', label:'N2', x:240, y:80,  name:'分拣站A'},
-        {id:'N3', label:'N3', x:240, y:200,  name:'分拣站B'},
-        {id:'N4', label:'N4', x:240, y:320, name:'装载区'},
-        {id:'N5', label:'N5', x:400, y:80, name:'充电站'},
-        {id:'N6', label:'N6', x:400, y:200, name:'充电站'},
-        {id:'N7', label:'N7', x:400, y:320, name:'充电站'},
-        {id:'N8', label:'N8', x:560, y:80, name:'充电站'},
-        {id:'N9', label:'N9', x:560, y:200, name:'充电站'},
-        {id:'N10', label:'N10', x:560, y:320, name:'充电站'}
-      ],
+        nodes : [
+          {id:'N1',  label:'N1',  x:70,  y:70,  name:'起始点'},
+          {id:'N2',  label:'N2',  x:70,  y:190, name:'起始点'},
+          {id:'N3',  label:'N3',  x:70,  y:310, name:'起始点'},
+
+          {id:'N4',  label:'N4',  x:260, y:70,  name:''},
+          {id:'N5',  label:'N5',  x:260, y:190, name:''},
+          {id:'N6',  label:'N6',  x:260, y:310, name:''},
+
+          {id:'N7',  label:'N7',  x:450, y:70,  name:''},
+          {id:'N8',  label:'N8',  x:450, y:190, name:''},
+          {id:'N9',  label:'N9',  x:450, y:310, name:''},
+
+          {id:'N10', label:'N10', x:640, y:70,  name:''},
+          {id:'N11', label:'N11', x:640, y:190, name:''},
+          {id:'N12', label:'N12', x:640, y:310, name:''},
+
+          {id:'N13', label:'N13', x:830, y:70,  name:'结束点'},
+          {id:'N14', label:'N14', x:830, y:190, name:'结束点'},
+          {id:'N15', label:'N15', x:830, y:310, name:'结束点'},
+        ],
       edges: [
-        {id:'L1', from:'N1', to:'N2'},
-        {id:'L2', from:'N2', to:'N5'},
-        {id:'L3', from:'N2', to:'N3'},
-        {id:'L4', from:'N3', to:'N6'},
-        {id:'L5', from:'N3', to:'N4'},
-        {id:'L6', from:'N4', to:'N7'},
-        {id:'L7', from:'N5', to:'N8'},
-        {id:'L8', from:'N5', to:'N6'},
-        {id:'L9', from:'N6', to:'N9'},
-        {id:'L10', from:'N6', to:'N7'},
-        {id:'L11', from:'N7', to:'N10'},
-        {id:'L12', from:'N8', to:'N9'},
-        {id:'L13', from:'N9', to:'N10'}
-      ]
+        {id:'L1',  from:'N1',  to:'N4'},
+        {id:'L2',  from:'N2',  to:'N5'},
+        {id:'L3',  from:'N3',  to:'N6'},
+
+        {id:'L4',  from:'N4',  to:'N5'},
+        {id:'L5',  from:'N5',  to:'N6'},
+
+        {id:'L6',  from:'N4',  to:'N7'},
+        {id:'L7',  from:'N5',  to:'N8'},
+        {id:'L8',  from:'N6',  to:'N9'},
+
+        {id:'L9',  from:'N7',  to:'N8'},
+        {id:'L10', from:'N8',  to:'N9'},
+
+        {id:'L11', from:'N7',  to:'N10'},
+        {id:'L12', from:'N8',  to:'N11'},
+        {id:'L13', from:'N9',  to:'N12'},
+
+        {id:'L14', from:'N10', to:'N11'},
+        {id:'L15', from:'N11', to:'N12'},
+
+        {id:'L16', from:'N10', to:'N13'},
+        {id:'L17', from:'N11', to:'N14'},
+        {id:'L18', from:'N12', to:'N15'},
+      ],
     },
     logs: [
       {level:'info', msg:'C2 开始执行任务 T002 (N3→N4)', timestamp: now},
