@@ -15,4 +15,5 @@ int main(){
     LOG_DEBUG("OV-test","map-Edge:%d,%d",sizeof(agv::Edge),alignof(agv::Edge));
     LOG_DEBUG("OV-test","map-AdjEntry:%d,%d",sizeof(agv::AdjEntry),alignof(agv::AdjEntry));
     LOG_DEBUG("OV-test","Car:%d,%d",sizeof(agv::Car),alignof(agv::Car));
+    LOG_DEBUG("OV-test","Seqlock:%d,%d",sizeof(agv::Seqlock),alignof(agv::Seqlock));
 }
