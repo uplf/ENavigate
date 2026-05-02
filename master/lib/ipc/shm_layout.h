@@ -45,6 +45,7 @@ namespace agv{
         uint8_t _pad[1];
         uint16_t path_stack[AGV_MAX_PATHLEN];
         uint8_t path_len;
+        uint8_t _pad2[1];
     };
     struct Node {
         uint16_t   id;
@@ -60,7 +61,7 @@ namespace agv{
         uint16_t to_node;
         uint16_t weight;
         EdgeStatus status;
-        uint8_t    _pad[1];
+        char       label[AGC_MAX_LABEL];
     };
 
     /// 单个节点的邻接信息：存放从该节点出发的所有边 ID
@@ -75,14 +76,12 @@ namespace agv{
         AdjEntry adj_  [AGV_MAX_NODES];     ///< adj_[node_id] = 该节点的出边列表
         uint16_t node_count_;
         uint16_t edge_count_;
-        uint8_t  _pad[4];   //TODO这里似乎要改
     };
     //DO_NOT_USE;
 
     struct CarData {
         Car      cars_[AGV_MAX_CARS];
         uint16_t car_count_;
-        uint8_t  _pad[6];
     };
     //DO_NOT_USE;
 
