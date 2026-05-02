@@ -43,8 +43,6 @@ public:
                 log_err("cleanup '" + it->name + "' threw unknown exception");
             }
         }
-
-        sd_notify(0, "STOPPING=1");
         log_info("exit(0)");
         ::exit(0);
     }

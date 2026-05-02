@@ -1,0 +1,121 @@
+#pragma once
+
+#include "config/config.h"
+#include "seqlock.h"
+#include <cstdint>
+#include <cstdio>
+#include <cstring>
+
+namespace agv{
+    static constexpr char kShmName[] = "/agv_shm";
+    /// 魔数，用于校验 SHM 是否由本程序初始化
+    static constexpr uint32_t kShmMagic   = 0x41475631u;  // "AGV1"
+    static constexpr uint32_t kShmVersion = 1u;
+
+    enum class CarStatus : uint8_t {
+        IDLE    = 0,
+        MOVING  = 1,
+        FAULT   = 2,
+        OFFLINE = 3,
+        WAIT    = 4,
+    };
+
+    enum class NodeStatus : uint8_t {
+        IDLE     = 0,
+        OCCUPIED = 1,
+        FAULT    = 2,
+    };
+
+    enum class EdgeStatus : uint8_t {
+        IDLE         = 0,
+        OCCUPIED     = 1,
+        BLOCKED      = 2,   // ban 接口设置
+        FAULT_TEMP   = 3,
+        FAULT_REPAIR = 4,
+    };
+
+
+
+    struct Car{
+        uint8_t id;
+        CarStatus status;
+        uint8_t current_node_id;
+        uint8_t current_task_id;
+        uint8_t target_node_id;
+        uint8_t _pad[1];
+        uint16_t path_stack[AGV_MAX_PATHLEN];
+        uint8_t path_len;
+    };
+    struct Node {
+        uint16_t   id;
+        uint16_t   x, y;
+        NodeStatus status;
+        char       name [AGC_MAX_NAME];
+        char       label[AGC_MAX_LABEL];
+        uint8_t    _pad[1];             // 补齐到偶数字节
+    };
+    struct Edge{
+        uint16_t id;
+        uint16_t from_node;
+        uint16_t to_node;
+        uint16_t weight;
+        EdgeStatus status;
+        uint8_t    _pad[1];
+    };
+
+    /// 单个节点的邻接信息：存放从该节点出发的所有边 ID
+    struct AdjEntry {
+        uint8_t  count;                         ///< 有效邻居数
+        uint8_t  _pad[1];
+        uint16_t edge_ids[AGV_MAX_NEIGHBORS];   ///< 出边 ID 列表（通过 edge_id 查 Edge）
+    };
+    struct MapData {
+        Node     nodes_[AGV_MAX_NODES];
+        Edge     edges_[AGV_MAX_EDGES];
+        AdjEntry adj_  [AGV_MAX_NODES];     ///< adj_[node_id] = 该节点的出边列表
+        uint16_t node_count_;
+        uint16_t edge_count_;
+        uint8_t  _pad[4];   //TODO这里似乎要改
+    };
+    //DO_NOT_USE;
+
+    struct CarData {
+        Car      cars_[AGV_MAX_CARS];
+        uint16_t car_count_;
+        uint8_t  _pad[6];
+    };
+    //DO_NOT_USE;
+
+
+    struct ShmHeader {
+        uint32_t magic;         ///< == kShmMagic，用于 attach 时校验
+        uint32_t version;       ///< 版本号，进程不匹配时拒绝 attach
+        uint32_t shm_size;      ///< sizeof(ShmLayout)，二次校验
+        uint8_t  initialized;   ///< 1 = model_manager 已完成初始化
+        uint8_t  _pad[51];      ///< 补齐到 64 字节
+    };
+    static_assert(sizeof(ShmHeader) == 64, "ShmHeader must be 64 bytes");
+
+    /**
+    * ShmLayout — SHM 的完整内存布局
+    *
+    * 内存排列：
+    *   [ShmHeader      ]  64 B   header 和校验信息
+    *   [Seqlock map_lock]  64 B   MapData 的顺序锁
+    *   [MapData        ]  ~8 KB  地图数据
+    *   [Seqlock car_lock]  64 B   CarData 的顺序锁
+    *   [CarData        ]  ~1 KB  小车状态
+    *
+    * 锁和数据分开排列而不是内嵌在数据结构里，
+    * 是为了让 Seqlock 本身不被写操作的 memcpy 覆盖。
+    */
+    struct ShmLayout {
+        ShmHeader header;       // offset 0
+
+        Seqlock   map_lock;     // offset 64      — MapData 的锁
+        MapData   map;          // offset 128
+
+        Seqlock   car_lock;     // 紧随 map 之后  — CarData 的锁
+        CarData   cars;         // 紧随 car_lock
+    };
+}

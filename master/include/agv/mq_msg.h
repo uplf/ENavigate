@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../config/config.h"
-#include "models.h"
 #include <cstdint>
 #include <cstdio>
 #include <cstring>

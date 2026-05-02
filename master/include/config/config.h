@@ -13,9 +13,11 @@
 //最大的节点数
 #define AGV_MAX_NODES 64
 //最大路径数
-#define AGV_MAX_PATHS 128
+#define AGV_MAX_EDGES 128
 //最大的规划所包含的路径长度
 #define AGV_MAX_PATHLEN 100
+//节点引出最大边数
+#define AGV_MAX_NEIGHBORS 8
 
 //节点名称最大长度
 #define AGC_MAX_NAME 16
@@ -24,4 +26,4 @@
 
 
 
-#define DO_NOT_USE _Static_assert(0, "This macro is not allowed")
+//#define DO_NOT_USE _Static_assert(0, "This macro is not allowed")
