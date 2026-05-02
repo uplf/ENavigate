@@ -1,7 +1,7 @@
 add_subdirectory(log_daemon)
 add_subdirectory(model_manager)
 #add_subdirectory(planner)
-#add_subdirectory(mqtt_publisher)
+add_subdirectory(mqtt_service)
 #add_subdirectory(mqtt_subscriber)
 #add_subdirectory(http_api/status)
 #add_subdirectory(http_api/task)
