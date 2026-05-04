@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
-
+#include <string>
 
 namespace agv {
 
@@ -110,6 +110,15 @@ enum class MqttCmdType : uint8_t {
     QUERY=2,
     ACTION=3,
 };
+string mqtt_cmd_type_to_str(MqttCmdType type) {
+    switch (type) {
+        case MqttCmdType::CMD_angle: return "ANGLE";
+        case MqttCmdType::CMD_ori:   return "ORIENT";
+        case MqttCmdType::QUERY:     return "QUERY";
+        case MqttCmdType::ACTION:    return "ACTION";
+        default:                    return "UNKNOWN";
+    }
+}
 struct AngleParam{
     uint16_t angle;
     uint8_t _pad[2];  
@@ -118,7 +127,17 @@ enum class OriCmd:uint8_t{
     kStraight=0,
     kLeft=1,
     kRight=2,
+    kARRIVED=3,
 };
+string ori_cmd_to_str(OriCmd cmd) {
+    switch (cmd) {
+        case OriCmd::kStraight: return "STRAIGHT";
+        case OriCmd::kLeft:     return "LEFT";
+        case OriCmd::kRight:    return "RIGHT";
+        case OriCmd::kARRIVED: return "ARRIVED";
+        default:               return "UNKNOWN";
+    }
+}
 struct OriParam{
     OriCmd cmd;
     uint8_t _pad[3];
@@ -127,6 +146,13 @@ enum class QueryCmd:uint8_t{
     kStatus=0,
     kLog=1,
 };
+string query_cmd_to_str(QueryCmd cmd) {
+    switch (cmd) {
+        case QueryCmd::kStatus: return "STATUS";
+        case QueryCmd::kLog:    return "LOG";
+        default:               return "UNKNOWN";
+    }
+}
 struct QueryParam{
     QueryCmd cmd;
     uint8_t _pad[3];
@@ -135,7 +161,17 @@ enum class ActionCmd:uint8_t{
     kPause=0,
     kProcess=1,
     kReboot=2,
+    kUturn=3,
 };
+string action_cmd_to_str(ActionCmd cmd) {
+    switch (cmd) {
+        case ActionCmd::kPause:   return "PAUSE";
+        case ActionCmd::kProcess: return "PROCESS";
+        case ActionCmd::kReboot:  return "REBOOT";
+        case ActionCmd::kUturn:   return "UTURN";
+        default:                 return "UNKNOWN";
+    }
+}
 struct ActionParam{
     ActionCmd cmd;
     uint8_t _pad[3];
@@ -193,20 +229,23 @@ struct MqttPublishMsg {
     //TODO: 根据 cmd_type 和参数生成 topic 和 payload
     void to_mqtt(char* topic_buf, size_t topic_buf_size, char* payload_buf, size_t payload_buf_size) const {
         // 根据 cmd_type 和 car_id 生成 topic
-        snprintf(topic_buf, topic_buf_size, "agv/car/%u/cmd/%u", car_id, static_cast<uint8_t>(cmd_type));
+        snprintf(topic_buf, topic_buf_size, "car/%u/cmd", car_id);
         // 根据 cmd_type 和参数生成 payload（示例为 JSON 格式）
         switch (cmd_type) {
             case MqttCmdType::CMD_angle:
-                snprintf(payload_buf, payload_buf_size, "{\"angle\":%u}", params.c_angle.angle);
+                snprintf(payload_buf,payload_buf_size,"{\"param\":%u}", params.c_angle.angle);
                 break;
             case MqttCmdType::CMD_ori:
-                snprintf(payload_buf, payload_buf_size, "{\"ori_cmd\":%u}", static_cast<uint8_t>(params.c_ori.cmd));
+                snprintf(payload_buf, payload_buf_size, "{\"param\":\"%s\"}",
+                         ori_cmd_to_str(params.c_ori.cmd).c_str());
                 break;
             case MqttCmdType::QUERY:
-                snprintf(payload_buf, payload_buf_size, "{\"query_cmd\":%u}", static_cast<uint8_t>(params.c_query.cmd));
+                snprintf(payload_buf, payload_buf_size, "{\"param\":\"%s\"}",
+                         query_cmd_to_str(params.c_query.cmd).c_str());
                 break;
             case MqttCmdType::ACTION:
-                snprintf(payload_buf, payload_buf_size, "{\"action_cmd\":%u}", static_cast<uint8_t>(params.c_action.cmd));
+                snprintf(payload_buf, payload_buf_size, "{\"param\":\"%s\"}",
+                         action_cmd_to_str(params.c_action.cmd).c_str());
                 break;
             default:
                 payload_buf[0] = '\0';

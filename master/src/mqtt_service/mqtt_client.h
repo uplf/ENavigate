@@ -1,27 +1,4 @@
 #pragma once
-
-/**
- * mqtt_client.h — libmosquitto 连接封装
- *
- * 封装目标：
- *   - 把 mosquitto_new / connect / loop_start / disconnect / destroy
- *     的生命周期收拢到一个 RAII 类
- *   - 提供统一的断线重连逻辑（on_disconnect 回调内自动重连）
- *   - 不暴露 mosquitto* 原始指针，子类通过 mosq() 访问
- *
- * 使用方式（继承）：
- *   class MyClient : public agv::MqttClientBase {
- *       void on_connect(int rc) override { ... 订阅 topic ... }
- *       void on_message(const mosquitto_message* msg) override { ... }
- *   };
- *
- *   MyClient client;
- *   client.init("my-client-id");
- *   client.connect(host, port);   // 非阻塞，loop 线程接管
- *   // ... 主循环 ...
- *   // 析构时自动 disconnect + destroy
- */
-
 #include <mosquitto.h>
 
 #include <atomic>
@@ -29,6 +6,7 @@
 #include <cstring>
 #include <stdexcept>
 #include <string>
+
 
 namespace agv {
 

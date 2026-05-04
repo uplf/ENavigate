@@ -1,39 +1,12 @@
-/**
- * main.cpp — mqtt_publisher 进程
- *
- * 职责：
- *   阻塞于 mq_mqtt_publish，收到命令后调用 libmosquitto 发布到 broker。
- *
- * 数据流：
- *   planner / mqtt_subscriber
- *       → mq_mqtt_publish (POSIX MQ)
- *       → [本进程]
- *       → mosquitto_publish
- *       → broker
- *       → 从机小车
- *
- * 调试模式（本文件当前状态）：
- *   不从 SHM 读实际数据，只把收到的 MqttPublishMsg 格式化后发布，
- *   同时订阅 car/+/event 回显收到的任何消息，便于端到端联调。
- *
- * 命令行：
- *   mqtt_publisher <broker_host> [broker_port]
- *   mqtt_publisher localhost
- *   mqtt_publisher 192.168.1.100 1883
- *
- * 编译：
- *   g++ -std=c++17 \
- *       -I../../ -I../../lib \
- *       -o mqtt_publisher main.cpp \
- *       -lmosquitto -lrt -lpthread
- */
-
 #define AGV_NO_SYSTEMD
+#include "config/config.h"
 
-#include "../../lib/mqtt/mqtt_client.h"
-#include "../../lib/ipc/signal_handler.h"
-#include "../../lib/ipc/secure_exit.h"
-#include "../../lib/ipc/mq_wrapper.h"
+#include "mqtt_client.h"
+#include "signal_handler.h"
+#include "secure_exit.h"
+#include "mq_wrapper.h"
+#include "config/config.h"
+#include "logger.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -43,24 +16,14 @@
 
 static const char* PROC_NAME = "mqtt_publisher";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Publisher MQTT 客户端
-// ─────────────────────────────────────────────────────────────────────────────
-
 class PublisherClient : public agv::MqttClientBase {
 public:
-    /**
-     * 把 MqttPublishMsg 序列化为 topic / payload 并发布。
-     * 在 poll 主循环的 MQ 分支中调用。
-     */
     bool publish(const agv::MqttPublishMsg& msg) {
         if (!is_connected()) {
-            fprintf(stderr, "[%s] not connected, drop cmd type=%u car=%u\n",
-                    PROC_NAME,
-                    static_cast<uint8_t>(msg.cmd_type), msg.car_id);
+            LOG_ERROR(PROC_NAME,"car%u not connected, drop cmd %u",
+                    msg.car_id,static_cast<uint8_t>(msg.cmd_type));
             return false;
         }
-
         char topic  [128] = {};
         char payload[512] = {};
         msg.to_mqtt(topic, sizeof(topic), payload, sizeof(payload));
@@ -75,12 +38,11 @@ public:
             /*retain=*/false);
 
         if (rc != MOSQ_ERR_SUCCESS) {
-            fprintf(stderr, "[%s] publish failed topic=%s rc=%d (%s)\n",
-                    PROC_NAME, topic, rc, mosquitto_strerror(rc));
+            LOG_ERROR(PROC_NAME,"publish failed topic=%s rc=%d(%s)",
+                    topic, rc, mosquitto_strerror(rc));
             return false;
         }
-
-        fprintf(stderr, "[%s] publish -> %s  %s\n", PROC_NAME, topic, payload);
+        LOG_INFO(PROC_NAME,"mqtt suc-publish->%s %s",topic, payload);
         return true;
     }
 
@@ -88,77 +50,70 @@ protected:
     // 连接成功后订阅回显 topic（调试用）
     void on_connect(int rc) override {
         if (rc != 0) return;
-
-        // 订阅从机所有事件，回显到 stderr，方便看链路是否通
-        mosquitto_subscribe(mosq(), nullptr, "car/+/event", 0);
-        fprintf(stderr, "[%s] subscribed car/+/event (debug echo)\n", PROC_NAME);
+        #ifdef _AGV_PRINT_PRINT
+        mosquitto_subscribe(mosq(), nullptr, "car/#", 0);
+        LOG_DEBUG(PROC_NAME,"subscribed all car topic to debug");
+        #endif
     }
-
     void on_message(const mosquitto_message* msg) override {
-        fprintf(stderr, "[%s] <- echo  topic=%-24s  payload=%.*s\n",
-                PROC_NAME,
+        #ifdef _AGV_PRINT_PRINT
+        mosquitto_subscribe(mosq(), nullptr, "car/#", 0);
+        LOG_DEBUG(PROC_NAME,"recv:topic=%-24s  payload=%.*s",
                 msg->topic,
                 msg->payloadlen,
                 static_cast<const char*>(msg->payload));
+        #endif
     }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// main
-// ─────────────────────────────────────────────────────────────────────────────
-int main() {
-    const char* host = "localhost";
-    int         port = 1883;
 
-    fprintf(stderr, "[%s] starting, broker=%s:%d\n", PROC_NAME, host, port);
-    // ── 1. 信号处理 ───────────────────────────────────────────────
+int main() {
+    const char* host = AGV_MQTT_HOST;
+    int         port = AGV_MQTT_PORT;
+    LOG_INFO(PROC_NAME,"begin, broker=%s:%d", host, port);
+
     agv::SignalHandler sig(PROC_NAME);
     try { sig.init(); }
     catch (const std::exception& e) {
-        fprintf(stderr, "[%s] FATAL signal: %s\n", PROC_NAME, e.what());
+        LOG_FATAL(PROC_NAME,"%s",e.what());
         return 1;
     }
 
-    // ── 2. MQTT 客户端初始化并连接 ────────────────────────────────
     PublisherClient mqtt;
     try {
         mqtt.init("agv-publisher");
         mqtt.connect(host, port);
     } catch (const std::exception& e) {
-        fprintf(stderr, "[%s] FATAL mqtt: %s\n", PROC_NAME, e.what());
+        LOG_FATAL(PROC_NAME,"mqtt:%s",e.what());
         return 1;
     }
 
-    // ── 3. 打开 MQ 接收端 ─────────────────────────────────────────
+    //打开MQ接收端
     agv::MqReceiver<agv::MqttPublishMsg> mq;
     try {
         mq.init(agv::kMqMqttPublish, 10, agv::kMqttPublishMsgSize);
     } catch (const std::exception& e) {
-        fprintf(stderr, "[%s] FATAL mq: %s\n", PROC_NAME, e.what());
+        LOG_FATAL(PROC_NAME,"mq:%s",e.what());
         return 1;
     }
 
-    // ── 4. 退出清理 ───────────────────────────────────────────────
+    //退出清理
     agv::SecureExit exit_seq(PROC_NAME);
     exit_seq.add_cleanup("mq_close", [&] { mq.close(); });
 
-    // ── 5. poll 主循环 ────────────────────────────────────────────
+    // poll 主循环
     enum { FD_SIG = 0, FD_MQ = 1, FD_COUNT };
     struct pollfd fds[FD_COUNT];
     fds[FD_SIG].fd = sig.get_fd(); fds[FD_SIG].events = POLLIN;
     fds[FD_MQ ].fd = mq.get_fd(); fds[FD_MQ ].events = POLLIN;
-
-    fprintf(stderr, "[%s] ready, waiting for commands on %s\n",
-            PROC_NAME, agv::kMqMqttPublish);
-
+    LOG_INFO(PROC_NAME,"ready,waiting for cmds on:%s",agv::kMqMqttPublish);
     while (!sig.shutdown_requested()) {
         int ret = ::poll(fds, FD_COUNT, -1);
         if (ret < 0) {
             if (errno == EINTR) continue;
-            fprintf(stderr, "[%s] poll error: %s\n", PROC_NAME, strerror(errno));
+            LOG_ERROR(PROC_NAME, "poll error: %s\n",strerror(errno));
             break;
         }
-
         if (fds[FD_SIG].revents & POLLIN) {
             sig.handle_read();
             continue;
@@ -172,7 +127,6 @@ int main() {
             }
         }
     }
-
-    fprintf(stderr, "[%s] shutting down\n", PROC_NAME);
+    LOG_INFO(PROC_NAME, "shutting down\n");
     exit_seq.run(100);
 }

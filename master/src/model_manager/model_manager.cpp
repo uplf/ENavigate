@@ -49,7 +49,7 @@ void init_car(agv::ShmLayout* shm_ptr){
 
 
 int main(){
-    LOG_INFO(proc_name,"model-manager begin");
+    LOG_INFO(proc_name,"begin");
     agv::SignalHandler sig(proc_name);
     try {
         sig.init();

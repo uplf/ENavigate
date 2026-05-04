@@ -6,6 +6,16 @@
 //****调试区 */
 //是否打印注释，若不直接打印，请注释
 #define _AGV_PRINT_DEBUG
+//MQTT全部测试回显
+//#define _AGV_PRINT_PRINT
+
+
+//****连接设置区 */
+//MQTT服务器地址
+#define AGV_MQTT_HOST "localhost"
+//MQTT服务器端口
+#define AGV_MQTT_PORT 1883
+
 
 //****常量区-边界常量 */
 //最大车数-已经按照该定义作对齐
@@ -21,9 +31,12 @@
 
 //节点名称最大长度-已经按照该定义作对齐
 #define AGC_MAX_NAME 16
-//节点标签最大长度-已经按照该定义作对齐
-#define AGC_MAX_LABEL 5
+//节点标签最大长度|障碍标签最大长度-已经按照该定义作对齐
+#define AGC_MAX_LABEL 15
 
+
+//属于暂时的障碍
+#define AGC_TMP_OBSTACLE "apple", "banana", "orange", nullptr
 
 
 //#define DO_NOT_USE _Static_assert(0, "This macro is not allowed")

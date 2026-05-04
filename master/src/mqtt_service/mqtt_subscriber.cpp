@@ -36,15 +36,18 @@
 
 #define AGV_NO_SYSTEMD
 
-#include "../../lib/mqtt/mqtt_client.h"
-#include "../../lib/ipc/signal_handler.h"
-#include "../../lib/ipc/secure_exit.h"
-#include "../../lib/ipc/mq_wrapper.h"
+#include "mqtt_client.h"
+#include "signal_handler.h"
+#include "secure_exit.h"
+#include "mq_wrapper.h"
+#include "config/config.h"
+#include "logger.h"
 
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <poll.h>
+#include <string>
 
 static const char* PROC_NAME = "mqtt_subscriber";
 
@@ -53,20 +56,20 @@ static const char* PROC_NAME = "mqtt_subscriber";
 // ─────────────────────────────────────────────────────────────────────────────
 
 enum class EventType : uint8_t {
-    kUnknown  = 0,
-    kReached  = 1,   // 到达节点
-    kObstacle = 2,   // 障碍物
+    kARRIVE  = 0,
+    kOBSTACLE  = 1,
+    kREPAIRED = 2,
+    kACK=3,
+    kINFO=4,
 };
 
 struct CarEvent {
     EventType type;
     uint8_t   car_id;    // 从 topic 中解析
 
-    // kReached
-    uint8_t   node_id;
-
-    // kObstacle
-    bool      is_temporary;   // true=临时, false=永久
+    int16_t   val_param;
+    string param;
+    bool is_temporary;  // 仅针对障碍事件，表示是否为临时障碍
 };
 
 /**
@@ -113,32 +116,60 @@ static const char* json_get(const char* json, const char* key,
     }
 }
 
+
+bool is_temp(const char* input) {
+    static const char* list[] = { AGC_TMP_OBSTACLE };
+    for (int i = 0; list[i] != nullptr; ++i) {
+        if (strcmp(input, list[i]) == 0) return true;
+    }
+    return false;
+}
+
 static CarEvent parse_event(const char* topic, const char* payload) {
     CarEvent ev{};
     ev.car_id = parse_car_id(topic);
 
     int vlen = 0;
     const char* type_val = json_get(payload, "type", &vlen);
-    if (!type_val) return ev;
+    if (!type_val){
+        LOG_ERROR(PROC_NAME,"failed to analyse json");
+        return ev;
+    } 
 
-    if (strncmp(type_val, "reached", vlen) == 0) {
-        ev.type = EventType::kReached;
+    if (strncmp(type_val, "ARRIVE", vlen) == 0) {
+        ev.type = EventType::kARRIVE;
         const char* node_val = json_get(payload, "node", &vlen);
-        if (node_val) {
-            ev.node_id = static_cast<uint8_t>(strtol(node_val, nullptr, 10));
+    } else if (strncmp(type_val, "OBSTACLE", vlen) == 0) {
+        ev.type = EventType::kOBSTACLE;
+        const char* kind_val = json_get(payload, "param", &vlen);
+        if (value_ptr && len < AGC_MAX_LABEL-1) {
+            char buf[AGC_MAX_LABEL];
+            memcpy(buf, value_ptr, len);
+            buf[len] = '\0'; 
+            ev.param = string(buf);
+            ev.is_temporary = is_temp(buf);
+        }else{
+            LOG_ERROR(PROC_NAME,"failed to analyse json");
         }
-    } else if (strncmp(type_val, "obstacle", vlen) == 0) {
-        ev.type = EventType::kObstacle;
-        const char* kind_val = json_get(payload, "kind", &vlen);
-        ev.is_temporary = (kind_val && strncmp(kind_val, "temporary", vlen) == 0);
+    } else if (strncmp(type_val, "REPAIRED", vlen) == 0) {
+        ev.type = EventType::kREPAIRED;
+    } else if (strncmp(type_val, "ACK", vlen) == 0) {
+        ev.type = EventType::kACK;
+    } else if (strncmp(type_val, "INFO", vlen) == 0) {
+        ev.type = EventType::kINFO;
+    } else {
+        LOG_ERROR(PROC_NAME,"unknown event type in json");
     }
+    //涉及到数字的操作
+    //if (node_val) {
+    //    ev.node_id = static_cast<uint8_t>(strtol(node_val, nullptr, 10));
+    //}
 
     return ev;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Subscriber MQTT 客户端
-// ─────────────────────────────────────────────────────────────────────────────
+
 
 class SubscriberClient : public agv::MqttClientBase {
 public:
@@ -155,12 +186,11 @@ protected:
         if (rc != 0) return;
 
         // 订阅所有小车的事件 topic
-        int ret = mosquitto_subscribe(mosq(), nullptr, "agv/car/+/cmd/0", /*qos=*/1);
+        int ret = mosquitto_subscribe(mosq(), nullptr, "car/+/event", /*qos=*/1);
         if (ret == MOSQ_ERR_SUCCESS) {
-            fprintf(stderr, "[%s] subscribed to car/+/cmd(tmp)\n", PROC_NAME);
+            LOG_INFO(PROC_NAME, "subscribed to car/+/event");
         } else {
-            fprintf(stderr, "[%s] subscribe failed: %s\n",
-                    PROC_NAME, mosquitto_strerror(ret));
+            LOG_ERROR(PROC_NAME, "subscribe failed: %s\n", mosquitto_strerror(ret));
         }
     }
 
@@ -172,91 +202,62 @@ protected:
         int  plen = msg->payloadlen < (int)sizeof(payload) - 1
                     ? msg->payloadlen : (int)sizeof(payload) - 1;
         memcpy(payload, msg->payload, plen);
-
-        fprintf(stderr, "[%s] ← topic=%-24s  payload=%s\n",
-                PROC_NAME, msg->topic, payload);
+        LOG_INFO(PROC_NAME,"received topic=%s payload=%s", msg->topic, payload);
 
         CarEvent ev = parse_event(msg->topic, payload);
         if (ev.car_id == 0xFF) {
-            fprintf(stderr, "[%s]   parse error: bad car_id in topic\n",
-                    PROC_NAME);
+            LOG_ERROR(PROC_NAME, "parse error: bad car_id in topic");
             return;
         }
-
         dispatch(ev, payload);
     }
 
 private:
+    //TODO---根据小车情况采取行动
+    _Static_assert(0, "This macro is not allowed")
+
     void dispatch(const CarEvent& ev, const char* raw_payload) {
         switch (ev.type) {
-
-        case EventType::kReached:
-            fprintf(stderr,
-                "[%s]   → kReached: car=%u arrived at node=%u\n",
-                PROC_NAME, ev.car_id, ev.node_id);
-
-            // 调试模式：不写 SHM，只打印
-            // 正式模式：agv::shm_set_car_status(shm, car_idx, CarStatus::IDLE, ev.node_id);
-
-            // 触发重规划（若还有路径）
-            // 调试模式：只打印，不真正发 MQ
-            fprintf(stderr,
-                "[%s]   → would send TaskDispatch::replan for car=%u\n",
-                PROC_NAME, ev.car_id);
-
-            if (mq_task_) {
-                auto task = agv::TaskDispatchMsg::replan(ev.car_id);
-                mq_task_->send(task, agv::kPrioNormal);
-                fprintf(stderr, "[%s]   → sent replan to mq_task_dispatch\n",
-                        PROC_NAME);
+            case EventType::kARRIVE:{
+                LOG_INFO(PROC_NAME,"car%u arrived at node%u", ev.car_id, ev.val_param);
+                break;
             }
-            break;
-
-        case EventType::kObstacle:
-            fprintf(stderr,
-                "[%s]   → kObstacle: car=%u kind=%s\n",
-                PROC_NAME, ev.car_id,
-                ev.is_temporary ? "temporary" : "permanent");
-
-            // 临时障碍：停车等待
-            if (ev.is_temporary && mq_pub_) {
-                auto stop = agv::MqttPublishMsg::make_action(ev.car_id, agv::ActionCmd::kPause);
-                mq_pub_->send(stop, agv::kPrioHigh);
-                fprintf(stderr, "[%s]   → sent pause(emergency) to mq_mqtt_publish\n",
-                        PROC_NAME);
+             case EventType::kREPAIRED:{
+                LOG_INFO(PROC_NAME,"car%u repaired obstacle", ev.car_id);
+                break;
             }
-            break;
-
-        default:
-            fprintf(stderr, "[%s]   → unknown event type, payload=%s\n",
-                    PROC_NAME, raw_payload);
-            break;
-        }
+             case EventType::kACK:{
+                LOG_INFO(PROC_NAME,"car%u ack cmd", ev.car_id);
+                break;
+            }
+             case EventType::kINFO:{
+                LOG_INFO(PROC_NAME,"car%u info: %s", ev.car_id, ev.param.c_str());
+                break;
+            }
+            default:
+                LOG_ERROR(PROC_NAME, "unknown event type, payload=%s", raw_payload);
+                break;
+            }
     }
-
     agv::MqSender<agv::TaskDispatchMsg>* mq_task_ {nullptr};
     agv::MqSender<agv::MqttPublishMsg>*  mq_pub_  {nullptr};
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// main
-// ─────────────────────────────────────────────────────────────────────────────
 
 int main() {
     const char* host = "localhost";
     int         port = 1883;
-
-    fprintf(stderr, "[%s] starting, broker=%s:%d\n", PROC_NAME, host, port);
+    LOG_INFO(PROC_NAME,"starting, broker=%s:%d", host, port);
 
     // ── 1. 信号处理 ───────────────────────────────────────────────
     agv::SignalHandler sig(PROC_NAME);
     try { sig.init(); }
     catch (const std::exception& e) {
-        fprintf(stderr, "[%s] FATAL signal: %s\n", PROC_NAME, e.what());
+        LOG_FATAL(PROC_NAME,"signal handler init failed: %s",e.what());
         return 1;
     }
 
-    // ── 2. MQ 发送端（可选，若 MQ 未启动则跳过）──────────────────
+    // MQ 发送端（可选，若 MQ 未启动则跳过）
     agv::MqSender<agv::TaskDispatchMsg> mq_task;
     agv::MqSender<agv::MqttPublishMsg>  mq_pub;
     bool mq_available = false;
@@ -265,13 +266,12 @@ int main() {
         mq_task.init(agv::kMqTaskDispatch, agv::kTaskDispatchMsgSize);
         mq_pub .init(agv::kMqMqttPublish,  agv::kMqttPublishMsgSize);
         mq_available = true;
-        fprintf(stderr, "[%s] MQ connected\n", PROC_NAME);
+        LOG_INFO(PROC_NAME,"MQ connected");
     } catch (const std::exception& e) {
-        fprintf(stderr, "[%s] MQ not available (%s), running in MQTT-only mode\n",
-                PROC_NAME, e.what());
+        LOG_ERROR(PROC_NAME,"MQ not available (%s), running in MQTT-only mode", e.what());
     }
 
-    // ── 3. MQTT 客户端 ────────────────────────────────────────────
+    // MQTT 客户端
     SubscriberClient mqtt;
     if (mq_available) {
         mqtt.set_mq_task(&mq_task);
@@ -282,11 +282,11 @@ int main() {
         mqtt.init("agv-subscriber");
         mqtt.connect(host, port);
     } catch (const std::exception& e) {
-        fprintf(stderr, "[%s] FATAL mqtt: %s\n", PROC_NAME, e.what());
+        LOG_FATAL(PROC_NAME,"mqtt init failed: %s", e.what());
         return 1;
     }
 
-    // ── 4. 退出清理 ───────────────────────────────────────────────
+    // 退出清理
     agv::SecureExit exit_seq(PROC_NAME);
     if (mq_available) {
         exit_seq.add_cleanup("mq_close", [&] {
@@ -295,18 +295,18 @@ int main() {
         });
     }
 
-    // ── 5. poll 主循环（只监听信号，MQTT 由后台线程处理）─────────
+    //poll 只监听信号，MQTT 由后台线程处理)
     enum { FD_SIG = 0, FD_COUNT };
     struct pollfd fds[FD_COUNT];
     fds[FD_SIG].fd = sig.get_fd(); fds[FD_SIG].events = POLLIN;
 
-    fprintf(stderr, "[%s] ready, listening for car/+/event\n", PROC_NAME);
+    LOG_INFO(PROC_NAME,"ready, listening for car/+/event");
 
     while (!sig.shutdown_requested()) {
         int ret = ::poll(fds, FD_COUNT, -1);
         if (ret < 0) {
             if (errno == EINTR) continue;
-            fprintf(stderr, "[%s] poll error: %s\n", PROC_NAME, strerror(errno));
+            LOG_ERROR(PROC_NAME,"poll error: %s", strerror(errno));
             break;
         }
 
@@ -315,6 +315,6 @@ int main() {
         }
     }
 
-    fprintf(stderr, "[%s] shutting down\n", PROC_NAME);
+    LOG_INFO(PROC_NAME,"shutting down");
     exit_seq.run(100);
 }
