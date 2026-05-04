@@ -68,7 +68,7 @@ struct CarEvent {
     uint8_t   car_id;    // 从 topic 中解析
 
     int16_t   val_param;
-    string param;
+    std::string param;
     bool is_temporary;  // 仅针对障碍事件，表示是否为临时障碍
 };
 
@@ -138,15 +138,15 @@ static CarEvent parse_event(const char* topic, const char* payload) {
 
     if (strncmp(type_val, "ARRIVE", vlen) == 0) {
         ev.type = EventType::kARRIVE;
-        const char* node_val = json_get(payload, "node", &vlen);
+        //const char* node_val = json_get(payload, "node", &vlen);
     } else if (strncmp(type_val, "OBSTACLE", vlen) == 0) {
         ev.type = EventType::kOBSTACLE;
         const char* kind_val = json_get(payload, "param", &vlen);
-        if (value_ptr && len < AGC_MAX_LABEL-1) {
+        if (kind_val && vlen < AGC_MAX_LABEL-1) {
             char buf[AGC_MAX_LABEL];
-            memcpy(buf, value_ptr, len);
-            buf[len] = '\0'; 
-            ev.param = string(buf);
+            memcpy(buf, kind_val, vlen);
+            buf[vlen] = '\0'; 
+            ev.param = std::string(buf);
             ev.is_temporary = is_temp(buf);
         }else{
             LOG_ERROR(PROC_NAME,"failed to analyse json");
@@ -214,7 +214,7 @@ protected:
 
 private:
     //TODO---根据小车情况采取行动
-    _Static_assert(0, "This macro is not allowed")
+    //_Static_assert(0, "This macro is not allowed");
 
     void dispatch(const CarEvent& ev, const char* raw_payload) {
         switch (ev.type) {

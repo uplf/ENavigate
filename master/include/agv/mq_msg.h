@@ -110,7 +110,7 @@ enum class MqttCmdType : uint8_t {
     QUERY=2,
     ACTION=3,
 };
-string mqtt_cmd_type_to_str(MqttCmdType type) {
+std::string mqtt_cmd_type_to_str(MqttCmdType type) {
     switch (type) {
         case MqttCmdType::CMD_angle: return "ANGLE";
         case MqttCmdType::CMD_ori:   return "ORIENT";
@@ -129,7 +129,7 @@ enum class OriCmd:uint8_t{
     kRight=2,
     kARRIVED=3,
 };
-string ori_cmd_to_str(OriCmd cmd) {
+std::string ori_cmd_to_str(OriCmd cmd) {
     switch (cmd) {
         case OriCmd::kStraight: return "STRAIGHT";
         case OriCmd::kLeft:     return "LEFT";
@@ -146,7 +146,7 @@ enum class QueryCmd:uint8_t{
     kStatus=0,
     kLog=1,
 };
-string query_cmd_to_str(QueryCmd cmd) {
+std::string query_cmd_to_str(QueryCmd cmd) {
     switch (cmd) {
         case QueryCmd::kStatus: return "STATUS";
         case QueryCmd::kLog:    return "LOG";
@@ -163,7 +163,7 @@ enum class ActionCmd:uint8_t{
     kReboot=2,
     kUturn=3,
 };
-string action_cmd_to_str(ActionCmd cmd) {
+std::string action_cmd_to_str(ActionCmd cmd) {
     switch (cmd) {
         case ActionCmd::kPause:   return "PAUSE";
         case ActionCmd::kProcess: return "PROCESS";
