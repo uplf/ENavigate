@@ -38,7 +38,7 @@
 
 #include "../../lib/mqtt/mqtt_client.h"
 #include "../../lib/ipc/signal_handler.h"
-#include "../../lib/ipc/graceful_exit.h"
+#include "../../lib/ipc/secure_exit.h"
 #include "../../lib/ipc/mq_wrapper.h"
 
 #include <cstdio>
@@ -155,9 +155,9 @@ protected:
         if (rc != 0) return;
 
         // 订阅所有小车的事件 topic
-        int ret = mosquitto_subscribe(mosq(), nullptr, "car/+/event", /*qos=*/1);
+        int ret = mosquitto_subscribe(mosq(), nullptr, "agv/car/+/cmd/0", /*qos=*/1);
         if (ret == MOSQ_ERR_SUCCESS) {
-            fprintf(stderr, "[%s] subscribed to car/+/event\n", PROC_NAME);
+            fprintf(stderr, "[%s] subscribed to car/+/cmd(tmp)\n", PROC_NAME);
         } else {
             fprintf(stderr, "[%s] subscribe failed: %s\n",
                     PROC_NAME, mosquitto_strerror(ret));
@@ -220,9 +220,9 @@ private:
 
             // 临时障碍：停车等待
             if (ev.is_temporary && mq_pub_) {
-                auto stop = agv::MqttPublishMsg::make_stop(ev.car_id, /*reason=*/1);
+                auto stop = agv::MqttPublishMsg::make_action(ev.car_id, agv::ActionCmd::kPause);
                 mq_pub_->send(stop, agv::kPrioHigh);
-                fprintf(stderr, "[%s]   → sent stop(emergency) to mq_mqtt_publish\n",
+                fprintf(stderr, "[%s]   → sent pause(emergency) to mq_mqtt_publish\n",
                         PROC_NAME);
             }
             break;
@@ -242,13 +242,9 @@ private:
 // main
 // ─────────────────────────────────────────────────────────────────────────────
 
-int main(int argc, char* argv[]) {
-    if (argc < 2) {
-        fprintf(stderr, "usage: %s <broker_host> [port]\n", argv[0]);
-        return 1;
-    }
-    const char* host = argv[1];
-    int         port = (argc >= 3) ? std::atoi(argv[2]) : 1883;
+int main() {
+    const char* host = "localhost";
+    int         port = 1883;
 
     fprintf(stderr, "[%s] starting, broker=%s:%d\n", PROC_NAME, host, port);
 
@@ -291,7 +287,7 @@ int main(int argc, char* argv[]) {
     }
 
     // ── 4. 退出清理 ───────────────────────────────────────────────
-    agv::GracefulExit exit_seq(PROC_NAME);
+    agv::SecureExit exit_seq(PROC_NAME);
     if (mq_available) {
         exit_seq.add_cleanup("mq_close", [&] {
             mq_task.close();

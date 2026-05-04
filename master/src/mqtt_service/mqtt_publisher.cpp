@@ -32,7 +32,7 @@
 
 #include "../../lib/mqtt/mqtt_client.h"
 #include "../../lib/ipc/signal_handler.h"
-#include "../../lib/ipc/graceful_exit.h"
+#include "../../lib/ipc/secure_exit.h"
 #include "../../lib/ipc/mq_wrapper.h"
 
 #include <cstdio>
@@ -57,7 +57,7 @@ public:
         if (!is_connected()) {
             fprintf(stderr, "[%s] not connected, drop cmd type=%u car=%u\n",
                     PROC_NAME,
-                    static_cast<uint8_t>(msg.type), msg.car_id);
+                    static_cast<uint8_t>(msg.cmd_type), msg.car_id);
             return false;
         }
 
@@ -80,7 +80,7 @@ public:
             return false;
         }
 
-        fprintf(stderr, "[%s] publish → %s  %s\n", PROC_NAME, topic, payload);
+        fprintf(stderr, "[%s] publish -> %s  %s\n", PROC_NAME, topic, payload);
         return true;
     }
 
@@ -95,7 +95,7 @@ protected:
     }
 
     void on_message(const mosquitto_message* msg) override {
-        fprintf(stderr, "[%s] ← echo  topic=%-24s  payload=%.*s\n",
+        fprintf(stderr, "[%s] <- echo  topic=%-24s  payload=%.*s\n",
                 PROC_NAME,
                 msg->topic,
                 msg->payloadlen,
@@ -106,17 +106,11 @@ protected:
 // ─────────────────────────────────────────────────────────────────────────────
 // main
 // ─────────────────────────────────────────────────────────────────────────────
-
-int main(int argc, char* argv[]) {
-    if (argc < 2) {
-        fprintf(stderr, "usage: %s <broker_host> [port]\n", argv[0]);
-        return 1;
-    }
-    const char* host = argv[1];
-    int         port = (argc >= 3) ? std::atoi(argv[2]) : 1883;
+int main() {
+    const char* host = "localhost";
+    int         port = 1883;
 
     fprintf(stderr, "[%s] starting, broker=%s:%d\n", PROC_NAME, host, port);
-
     // ── 1. 信号处理 ───────────────────────────────────────────────
     agv::SignalHandler sig(PROC_NAME);
     try { sig.init(); }
@@ -145,7 +139,7 @@ int main(int argc, char* argv[]) {
     }
 
     // ── 4. 退出清理 ───────────────────────────────────────────────
-    agv::GracefulExit exit_seq(PROC_NAME);
+    agv::SecureExit exit_seq(PROC_NAME);
     exit_seq.add_cleanup("mq_close", [&] { mq.close(); });
 
     // ── 5. poll 主循环 ────────────────────────────────────────────
