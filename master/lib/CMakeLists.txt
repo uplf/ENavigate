@@ -16,3 +16,10 @@ target_include_directories(agv_ipc INTERFACE
 #    ipc/timerfd_helper.cpp
 #)
 #target_link_libraries(agv_ipc PUBLIC rt)  # rt 提供 mq_open
+
+add_library(agv_timer STATIC timer/timer_fd.cpp)
+target_include_directories(agv_timer PUBLIC
+    ${PROJECT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/timer
+)
+target_link_libraries(agv_timer PUBLIC rt)
