@@ -24,6 +24,9 @@
 
 #include <cstdio>
 #include <cstring>
+#include <string>
+#include <nlohmann/json.hpp>
+using json = nlohmann::json;
 #include "mq_wrapper.h"
 #include "logger.h"
 
@@ -65,11 +68,12 @@ int main() {
 
         // ── /api/assign ──────────────────────────────────────────
         if (uri && strstr(uri, "/api/assign")) {
+            
             std::string car_str    = json_str(body, "car");
             std::string target_str = json_str(body, "target");
-
+            dprintf(2, "recv:%s->%s | %s\n", body.c_str(),car_str.c_str(),target_str.c_str());
             if (car_str.empty() || target_str.empty()) {
-                reply_err(400, "缺少 car 或 target 字段");
+                reply_err(400, "缺少 car 或 target 字段le");
                 continue;
             }
 

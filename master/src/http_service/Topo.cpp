@@ -25,6 +25,8 @@
 #include <cstring>
 #include <vector>
 #include <string>
+#include <nlohmann/json.hpp>
+using json = nlohmann::json;
 #include "shm_manager.h"
 #include "mq_wrapper.h"
 #include <fcgi_stdio.h>

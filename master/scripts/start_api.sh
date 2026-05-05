@@ -10,7 +10,7 @@
 
 set -e
 
-API_DIR="/home/ubuntu/Project/ENavigate/master/build/src/http_service"
+API_DIR="$(cd "$(dirname "$0")" && pwd)"
 SOCK_DIR="/run/agv"
 PID_DIR="/run/agv"
 LOG_DIR="/var/log/agv"
@@ -24,20 +24,22 @@ start() {
         -s "$SOCK_DIR/status.sock" \
         -P "$PID_DIR/status.pid" \
         -n \
-        -- "$API_DIR/status" >> "$LOG_DIR/status.log" 2>&1 &
+        -- "$API_DIR/Status" >> "$LOG_DIR/status.log" 2>&1 &
 
     spawn-fcgi \
         -s "$SOCK_DIR/task.sock" \
         -P "$PID_DIR/task.pid" \
         -n \
-        -- "$API_DIR/task_api" >> "$LOG_DIR/task.log" 2>&1 &
+        -- "$API_DIR/Task" >> "$LOG_DIR/task.log" 2>&1 &
 
     spawn-fcgi \
         -s "$SOCK_DIR/topo.sock" \
         -P "$PID_DIR/topo.pid" \
         -n \
-        -- "$API_DIR/topo_api" >> "$LOG_DIR/topo.log" 2>&1 &
+        -- "$API_DIR/Topo" >> "$LOG_DIR/topo.log" 2>&1 &
 
+    sleep 0.5
+    chmod 666 "$SOCK_DIR"/*.sock
     echo "[start_api] all started. sockets in $SOCK_DIR"
 }
 

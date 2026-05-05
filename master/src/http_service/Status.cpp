@@ -18,6 +18,8 @@
 #include <ctime>
 #include <cstdio>
 #include <cstring>
+#include <nlohmann/json.hpp>
+using json = nlohmann::json;
 #include "shm_manager.h"
 #include <fcgi_stdio.h>
 #include "fcgi_utils.h"
@@ -141,8 +143,8 @@ static void build_status_json(const agv::MapData& map,
         const auto& e = map.edges_[i];
         if (i > 0) append(out, cap, pos, ",");
         append(out, cap, pos,
-               "\"%s\":{\"status\":\"%s\",\"weight\":\"%d\",\"from\":\"N%u\",\"to\":\"N%u\"}",
-               edge_id_to_str(e.id,(e.status== agv::EdgeStatus::FAULT_TEMP||e.status== agv::EdgeStatus::FAULT_REPAIR)?e.label:""),
+               "\"L%d\":{\"status\":\"%s\",\"weight\":\"%d\",\"from\":\"N%u\",\"to\":\"N%u\"}",
+               e.id,
                edge_status_str(static_cast<uint8_t>(e.status)),
                e.weight,
                e.from_node, e.to_node);
