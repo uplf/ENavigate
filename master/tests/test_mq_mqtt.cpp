@@ -12,18 +12,42 @@
 
 const char* proc_name="mqtt-mq-sender";
 
-
-int main(){
+int main(int argc, char *argv[]) {
     agv::MqSender<agv::MqttPublishMsg>  tx;
-
+    if(argc<1){
+        return 1;
+    }
+    
     try {
         tx.init(agv::kMqMqttPublish,  agv::kMqttPublishMsgSize);
     } catch (const std::exception& e) {
         fprintf(stderr, "[child] FATAL: %s\n", e.what());
         ::exit(1);
     }
-    auto m = agv::MqttPublishMsg::make_angle(1, 5);
-    LOG_INFO(proc_name,"send:%d",int(tx.send(m,1)));
-
-
+    auto op_name=argv[1];
+    agv::MqttPublishMsg msg=agv::MqttPublishMsg::make_action(1,agv::ActionCmd::kPause);
+    switch (op_name[0]) {
+        case 'a':
+            if(op_name[1]=='1')msg=agv::MqttPublishMsg::make_angle(1,12);
+            if(op_name[1]=='2')msg=agv::MqttPublishMsg::make_angle(1,312);
+            break;
+        case 'o':
+            if(op_name[1]=='1')msg=agv::MqttPublishMsg::make_ori(1,agv::OriCmd::kLeft);
+            if(op_name[1]=='2')msg=agv::MqttPublishMsg::make_ori(1,agv::OriCmd::kRight);
+            if(op_name[1]=='3')msg=agv::MqttPublishMsg::make_ori(1,agv::OriCmd::kStraight);
+            if(op_name[1]=='4')msg=agv::MqttPublishMsg::make_ori(1,agv::OriCmd::kARRIVED);
+            break;
+        case 'q':
+            if(op_name[1]=='1')msg=agv::MqttPublishMsg::make_query(1,agv::QueryCmd::kStatus);
+            if(op_name[1]=='2')msg=agv::MqttPublishMsg::make_query(1,agv::QueryCmd::kLog);
+            break;
+        case 'c':
+            if(op_name[1]=='1')msg=agv::MqttPublishMsg::make_action(1,agv::ActionCmd::kPause);
+            if(op_name[1]=='2')msg=agv::MqttPublishMsg::make_action(1,agv::ActionCmd::kProcess);
+            if(op_name[1]=='3')msg=agv::MqttPublishMsg::make_action(1,agv::ActionCmd::kReboot);
+            if(op_name[1]=='4')msg=agv::MqttPublishMsg::make_action(1,agv::ActionCmd::kUturn);
+            break;
+    }
+    LOG_INFO(proc_name,"send:%d",int(tx.send(msg,1)));
+    return 0;
 }
