@@ -21,5 +21,5 @@ target_link_libraries(test_mq_mqtt PRIVATE agv_logger agv_ipc -lpthread systemd 
 add_executable(test_timer_fd test_timer_fd.cpp)
 target_link_libraries(test_timer_fd PRIVATE agv_timer rt)
 
-add_executable(test_1_http test_1_http.cpp)
-target_link_libraries(test_1_http PRIVATE agv_timer rt -lfcgi)
+#add_executable(test_1_http test_1_http.cpp)
+#target_link_libraries(test_1_http PRIVATE agv_timer rt -lfcgi)

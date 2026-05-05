@@ -20,14 +20,15 @@
  *   location /api/cancel { fastcgi_pass unix:/run/agv/task.sock; include fastcgi_params; }
  */
 
-#include <fcgi_stdio.h>
-#include "fcgi_util.h"
-#include "mq_wrapper.h"
-#include "logger.h"
+
 
 #include <cstdio>
 #include <cstring>
+#include "mq_wrapper.h"
+#include "logger.h"
 
+#include <fcgi_stdio.h>
+#include "fcgi_utils.h"
 using namespace agv::http;
 const char* proc_name = "task_api";
 

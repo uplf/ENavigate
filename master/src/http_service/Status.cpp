@@ -13,15 +13,14 @@
  *   spawn-fcgi -s /run/agv/status.sock -n ./status
  */
 
-#include <fcgi_stdio.h>
-#include "fcgi_util.h"
-#include "shm_manager.h"
-#include "logger.h"
+
 
 #include <ctime>
 #include <cstdio>
 #include <cstring>
-
+#include "shm_manager.h"
+#include <fcgi_stdio.h>
+#include "fcgi_utils.h"
 using namespace agv::http;
 
 // ── JSON 构建辅助 ─────────────────────────────────────────────────────────────

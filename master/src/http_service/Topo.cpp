@@ -21,16 +21,14 @@
  *   spawn-fcgi -s /run/agv/topo.sock -n ./topo_api
  */
 
-#include <fcgi_stdio.h>
-#include "fcgi_util.h"
-#include "shm_manager.h"
-#include "mq_wrapper.h"
-
 #include <cstdio>
 #include <cstring>
 #include <vector>
 #include <string>
-
+#include "shm_manager.h"
+#include "mq_wrapper.h"
+#include <fcgi_stdio.h>
+#include "fcgi_utils.h"
 using namespace agv::http;
 const char* proc_name = "topo_api";
 

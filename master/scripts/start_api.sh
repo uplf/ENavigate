@@ -10,7 +10,7 @@
 
 set -e
 
-API_DIR="$(cd "$(dirname "$0")" && pwd)"
+API_DIR="/home/ubuntu/Project/ENavigate/master/build/src/http_service"
 SOCK_DIR="/run/agv"
 PID_DIR="/run/agv"
 LOG_DIR="/var/log/agv"
