@@ -131,27 +131,25 @@ inline std::vector<std::string> json_str_array(const std::string& json,
                                                 const char* key) {
     std::vector<std::string> result;
 
-    // 找到数组起始
-    std::string needle = std::string("\"") + key + "\":[";
-    auto pos = json.find(needle);
-    if (pos == std::string::npos) return result;
+    try {
+        // 解析 JSON 字符串
+        auto j = nlohmann::json::parse(json);
 
-    size_t arr_start = pos + needle.size();
-    size_t arr_end   = json.find(']', arr_start);
-    if (arr_end == std::string::npos) return result;
-
-    std::string arr = json.substr(arr_start, arr_end - arr_start);
-
-    // 逐个提取 "value"
-    size_t i = 0;
-    while (i < arr.size()) {
-        auto q1 = arr.find('"', i);
-        if (q1 == std::string::npos) break;
-        auto q2 = arr.find('"', q1 + 1);
-        if (q2 == std::string::npos) break;
-        result.push_back(arr.substr(q1 + 1, q2 - q1 - 1));
-        i = q2 + 1;
+        // 检查 key 是否存在且值为数组
+        if (j.contains(key) && j[key].is_array()) {
+            const auto& arr = j[key];
+            for (const auto& elem : arr) {
+                if (elem.is_string()) {
+                    result.push_back(elem.get<std::string>());
+                }
+                // 如果数组中包含非字符串元素，按原函数行为忽略它们
+            }
+        }
+        // 否则返回空 result
+    } catch (const nlohmann::json::parse_error&) {
+        // 解析失败时返回空向量（与原实现行为一致）
     }
+
     return result;
 }
 

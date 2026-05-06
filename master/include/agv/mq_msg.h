@@ -226,7 +226,6 @@ struct MqttPublishMsg {
         return m;
     }
 
-    //TODO: 根据 cmd_type 和参数生成 topic 和 payload
     void to_mqtt(char* topic_buf, size_t topic_buf_size, char* payload_buf, size_t payload_buf_size) const {
         // 根据 cmd_type 和 car_id 生成 topic
         snprintf(topic_buf, topic_buf_size, "car/%u/cmd", car_id);

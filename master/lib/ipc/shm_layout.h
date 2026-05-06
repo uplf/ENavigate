@@ -42,7 +42,7 @@ namespace agv{
         uint8_t current_node_id;
         uint8_t current_task_id;
         uint8_t target_node_id;
-        uint8_t _pad[1];
+        uint8_t last_start_node_id;//引入这个利好小车回家
         uint16_t path_stack[AGV_MAX_PATHLEN];
         uint8_t path_len;
         uint8_t _pad2[1];

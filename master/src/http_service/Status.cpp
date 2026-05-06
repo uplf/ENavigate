@@ -128,10 +128,11 @@ static void build_status_json(const agv::MapData& map,
         const auto& n = map.nodes_[i];
         if (i > 0) append(out, cap, pos, ",");
         append(out, cap, pos,
-               "\"N%u\":{\"status\":\"%s\",\"name\":\"%s\"}",
+               "\"N%u\":{\"status\":\"%s\",\"name\":\"%s\",\"x\":%u,\"y\":%u}",
                n.id,
                node_status_str(static_cast<uint8_t>(n.status)),
-               n.name[0] ? n.name : "节点");
+               n.name[0] ? n.name : "节点",
+               n.x, n.y);
     }
     append(out, cap, pos, "},");
 
@@ -141,11 +142,15 @@ static void build_status_json(const agv::MapData& map,
         const auto& e = map.edges_[i];
         if (i > 0) append(out, cap, pos, ",");
         append(out, cap, pos,
-               "\"%s\":{\"status\":\"%s\",\"weight\":\"%d\",\"from\":\"N%u\",\"to\":\"N%u\"}",
+               "\"%s\":{\"status\":\"%s\",\"weight\":\"%d\",\"from\":\"N%u\",\"to\":\"N%u\"",
                edge_id_to_str(e.id,(e.status== agv::EdgeStatus::FAULT_TEMP||e.status== agv::EdgeStatus::FAULT_REPAIR)?e.label:""),
                edge_status_str(static_cast<uint8_t>(e.status)),
                e.weight,
                e.from_node, e.to_node);
+        if(e.status== agv::EdgeStatus::FAULT_TEMP||e.status== agv::EdgeStatus::FAULT_REPAIR){
+            append(out, cap, pos, ",\"desc\":\"%s\"", e.label);
+        }
+        append(out, cap, pos, "}");
     }
     append(out, cap, pos, "},");
 

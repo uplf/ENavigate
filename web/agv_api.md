@@ -557,7 +557,7 @@ GET /api/status
       {"id": "N10", "label": "N10", "x": 560, "y": 320, "name": "充电站"}
     ],
     "edges": [
-      {"id": "L1", "from": "N1", "to": "N2"},
+      {"id": "L1", "from": "N1", "to": "N2",},
       {"id": "L2", "from": "N2", "to": "N5"},
       {"id": "L3", "from": "N2", "to": "N3"},
       {"id": "L4", "from": "N3", "to": "N6"},

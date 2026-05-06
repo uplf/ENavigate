@@ -29,11 +29,13 @@ void init_map(agv::ShmLayout* shm_ptr){
 }
 void init_car(agv::ShmLayout* shm_ptr){
     shm_ptr->cars.car_count_ = 2;
+    //car id从1开始
     shm_ptr->cars.cars_[0] = {
         .id              = 1,
         .status          = agv::CarStatus::IDLE,
         .current_node_id = 0,
         .current_task_id = 0,
+        .last_start_node_id=1,
         .target_node_id  = 0,
         .path_len        = 0,
     };
@@ -42,6 +44,7 @@ void init_car(agv::ShmLayout* shm_ptr){
         .status          = agv::CarStatus::IDLE,
         .current_node_id = 2,
         .current_task_id = 0,
+        .last_start_node_id=2,
         .target_node_id  = 0,
         .path_len        = 0,
     };

@@ -4,10 +4,10 @@
 #include <atomic>
 #include <thread>
 #include <chrono>
-
 #include "planner.h"
 
 const char* proc_name="planner";
+
 
 int main(){
     LOG_INFO(proc_name,"begin");
@@ -18,13 +18,16 @@ int main(){
         LOG_FATAL(proc_name,"%s",e.what());
         return 1;
     }
-
-
-
+    agv::MqReceiver<agv::TaskDispatchMsg> mq;
     try {
-        
+        mq.init(kMqTaskDispatch);
     } catch (const std::exception& e) {
         LOG_ERROR(proc_name,"fail to create mq:%s",e.what());
+        return 1;
+    }
+    agv::planner planner_instance;
+    if(!planner_instance.init()){
+        LOG_ERROR(proc_name,"planner init failed");
         return 1;
     }
 
@@ -32,13 +35,17 @@ int main(){
     agv::SecureExit exit_seq(proc_name);
     exit_seq.add_cleanup("finish",[&]{LOG_INFO(proc_name,"finish unlinking mq");});
     exit_seq.add_cleanup("unlink-mq",[&]{});
+    exit_seq.add_cleanup("unlink-mq",[&]{planner_instance.do_cleanup();});
 
     //组建 poll 监听数组
     constexpr int FD_SIG = 0;
+    constexpr int FD_MQ = 1;
 
     struct pollfd fds[2];
     fds[FD_SIG].fd     = sig.get_fd();
     fds[FD_SIG].events = POLLIN;
+    fds[FD_MQ].fd     = sig.get_fd();
+    fds[FD_MQ].events = POLLIN;
 
     LOG_INFO(proc_name,"enter-poll-loop");
 
@@ -52,11 +59,17 @@ int main(){
             LOG_ERROR(proc_name,"poll:%s",strerror(errno));
             break;
         }
-
         if (fds[FD_SIG].revents & POLLIN) {
             sig.handle_read();
             continue;
         }
+        if (fds[FD_MQ].revents & POLLIN) {
+            agv::TaskDispatchMsg msg_recv={};
+            unsigned proi;
+            mq.receive(msg_recv,proi);
+
+            continue;
+        }     
 
     }
     LOG_INFO(proc_name,"shutdown-requested");

@@ -1,38 +1,4 @@
-/**
- * main.cpp — mqtt_subscriber 进程
- *
- * 职责：
- *   订阅 broker 上的 car/+/event，解析从机上报的事件，
- *   更新 SHM 中的小车状态，并根据事件类型向 mq_task_dispatch
- *   或 mq_mqtt_publish 发布后续动作。
- *
- * 数据流：
- *   从机小车
- *       → broker
- *       → car/<id>/event (MQTT)
- *       → [本进程 on_message]
- *       → SHM CarData（更新位置/状态）
- *       → mq_task_dispatch（触发重规划）或 mq_mqtt_publish（发下一条命令）
- *
- * 调试模式（本文件当前状态）：
- *   不写 SHM（SHM 可能未启动），只打印收到的消息并原样回显确认，
- *   便于单独测试 MQTT 链路。
- *
- * 事件 topic 格式：
- *   car/<car_id>/event
- *   payload JSON 示例：
- *     {"type":"reached","node":3}
- *     {"type":"obstacle","kind":"temporary"}
- *
- * 命令行：
- *   mqtt_subscriber <broker_host> [broker_port]
- *
- * 编译：
- *   g++ -std=c++17 \
- *       -I../../ -I../../lib \
- *       -o mqtt_subscriber main.cpp \
- *       -lmosquitto -lrt -lpthread
- */
+
 
 #define AGV_NO_SYSTEMD
 
