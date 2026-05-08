@@ -39,24 +39,19 @@ public:
     void write_begin() {
         uint32_t s = seq_.load(std::memory_order_relaxed);
         seq_.store(s + 1, std::memory_order_release);
-        // release：确保后续写数据操作不会被重排到 seq 更新之前
     }
 
-    /// 写后调用：seq 再次偶数化，发布写完信号
     void write_end() {
         uint32_t s = seq_.load(std::memory_order_relaxed);
         seq_.store(s + 1, std::memory_order_release);
     }
 
-    // ── 读者接口 ─────────────────────────────────────────────────────────────
-
-    /// 读前调用：返回当前 seq 快照，若为奇数则自旋等待写者完成
+    // ── 读者接口 
     uint32_t read_begin() const {
         uint32_t s;
         do {
             s = seq_.load(std::memory_order_acquire);
-            // acquire：确保后续读数据操作不会被提前到 seq 读取之前
-        } while (s & 1u);   // 奇数 = 写者正在写，等待
+        } while (s & 1u);
         return s;
     }
 

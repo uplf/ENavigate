@@ -40,3 +40,4 @@
 
 
 //#define DO_NOT_USE _Static_assert(0, "This macro is not allowed")
+_Static_assert(0, "重大设计缺陷：项目中没有给seqlock配置写同步机制，但是设计中有多个写者");
