@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * seqlock.h — Seqlock（顺序锁）实现
+ * seqlock.h — Seqlock（顺序锁）+ ProcMutex（进程共享写者互斥锁）实现
  *
  * 适用场景：读多写少、数据可重读（写者偶尔写，读者不介意重试）。
  * 你的 MapData / CarData 都满足这个特征。
@@ -16,7 +16,7 @@
  * 局限：
  *   - 不适合含指针的数据（跨进程指针无效）。
  *   - 写者频繁时读者会持续重试，但 AGV 场景写操作稀少，不是问题。
- *   - 单写者。若将来需要多写者，升级为带 mutex 的写侧即可。
+ *   - 单写者保证由上层 ProcMutex 提供，见 SeqlockMWWriteGuard。
  *
  * SHM 使用注意：
  *   Seqlock 本身是 POD，sizeof 固定，可以直接嵌入 SHM 结构体。
@@ -25,7 +25,9 @@
  */
 
 #include <atomic>
+#include <cerrno>
 #include <cstdint>
+#include <pthread.h>
 
 namespace agv {
 
@@ -70,16 +72,54 @@ private:
 
 static_assert(sizeof(Seqlock) == 64, "Seqlock must be exactly one cacheline");
 
+// ── 进程共享互斥锁（用于写者互斥） ──────────────────────────────────────────
+
+/**
+ * ProcMutex — 住在 SHM 中的进程共享 pthread 互斥锁
+ *
+ * 必须由 ShmOwner 在 create_and_init() 中显式调用 init()，
+ * 不能用 placement new 或 memset 初始化（pthread_mutex_t 有内部状态）。
+ *
+ * 启用了 PTHREAD_MUTEX_ROBUST：持锁进程崩溃后，下一个写者
+ * 调用 lock() 会收到 EOWNERDEAD 并自动恢复，避免永久死锁。
+ */
+struct alignas(64) ProcMutex {
+    pthread_mutex_t mtx;
+    char _pad[64 - sizeof(pthread_mutex_t)]; // 补齐到一个 cacheline
+
+    /// 在 SHM 初始化阶段由 owner 调用，设置 PTHREAD_PROCESS_SHARED
+    void init() {
+        pthread_mutexattr_t attr;
+        pthread_mutexattr_init(&attr);
+        pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
+        pthread_mutexattr_setrobust(&attr, PTHREAD_MUTEX_ROBUST);
+        pthread_mutex_init(&mtx, &attr);
+        pthread_mutexattr_destroy(&attr);
+    }
+
+    void destroy() { pthread_mutex_destroy(&mtx); }
+
+    void lock() {
+        int r = pthread_mutex_lock(&mtx);
+        if (r == EOWNERDEAD) {
+            // 上一个持锁进程异常退出，标记数据已恢复一致
+            pthread_mutex_consistent(&mtx);
+        }
+    }
+
+    void unlock() { pthread_mutex_unlock(&mtx); }
+};
+static_assert(sizeof(ProcMutex) == 64, "ProcMutex must be exactly one cacheline");
+
 // ── RAII 写者守卫 ─────────────────────────────────────────────────────────────
 
 /**
- * 用法：
- *   {
- *       SeqlockWriteGuard g(shm->map_lock);
- *       shm->map.edges_[i].status = EdgeStatus::BLOCKED;
- *   }  // 析构时自动 write_end
+ * SeqlockWriteGuard — 单写者场景（已废弃，请用 SeqlockMWWriteGuard）
+ *
+ * @deprecated 直接使用此守卫不提供多写者互斥，仅保留用于兼容。
+ *             新代码一律使用 SeqlockMWWriteGuard。
  */
-class SeqlockWriteGuard {
+class [[deprecated("Use SeqlockMWWriteGuard for multi-writer safety")]] SeqlockWriteGuard {
 public:
     explicit SeqlockWriteGuard(Seqlock& lock) : lock_(lock) {
         lock_.write_begin();
@@ -92,6 +132,39 @@ public:
 
 private:
     Seqlock& lock_;
+};
+
+/**
+ * SeqlockMWWriteGuard — 多写者安全的写守卫（推荐使用）
+ *
+ * 锁序：ProcMutex.lock() → Seqlock.write_begin() → 写数据
+ *        → Seqlock.write_end() → ProcMutex.unlock()
+ *
+ * 读者从不碰 ProcMutex，读性能不受影响。
+ *
+ * 用法：
+ *   {
+ *       SeqlockMWWriteGuard g(shm->map_write_mutex, shm->map_lock);
+ *       shm->map.edges_[i].status = EdgeStatus::BLOCKED;
+ *   }  // 析构时自动 write_end + unlock
+ */
+class SeqlockMWWriteGuard {
+public:
+    SeqlockMWWriteGuard(ProcMutex& mtx, Seqlock& lock)
+        : mtx_(mtx), lock_(lock) {
+        mtx_.lock();         // ① 排他写者
+        lock_.write_begin(); // ② seq 奇数化，通知读者「写中」
+    }
+    ~SeqlockMWWriteGuard() {
+        lock_.write_end();   // ③ seq 偶数化，数据就绪
+        mtx_.unlock();       // ④ 释放互斥锁
+    }
+    SeqlockMWWriteGuard(const SeqlockMWWriteGuard&)            = delete;
+    SeqlockMWWriteGuard& operator=(const SeqlockMWWriteGuard&) = delete;
+
+private:
+    ProcMutex& mtx_;
+    Seqlock&   lock_;
 };
 
 // ── 读者重试辅助宏 ────────────────────────────────────────────────────────────

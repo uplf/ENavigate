@@ -10,7 +10,7 @@ namespace agv{
     static constexpr char kShmName[] = "/agv_shm";
     /// 魔数，用于校验 SHM 是否由本程序初始化
     static constexpr uint32_t kShmMagic   = 0x41475631u;  // "AGV1"
-    static constexpr uint32_t kShmVersion = 1u;
+    static constexpr uint32_t kShmVersion = 2u;
 
     enum class CarStatus : uint8_t {
         IDLE    = 0,
@@ -99,22 +99,28 @@ namespace agv{
     * ShmLayout — SHM 的完整内存布局
     *
     * 内存排列：
-    *   [ShmHeader      ]  64 B   header 和校验信息
-    *   [Seqlock map_lock]  64 B   MapData 的顺序锁
-    *   [MapData        ]  ~8 KB  地图数据
-    *   [Seqlock car_lock]  64 B   CarData 的顺序锁
-    *   [CarData        ]  ~1 KB  小车状态
+    *   [ShmHeader         ]  64 B   header 和校验信息
+    *   [Seqlock map_lock  ]  64 B   MapData 的 seq 计数器（读者用）
+    *   [ProcMutex         ]  64 B   MapData 的写者互斥锁（写者用）
+    *   [MapData           ]  ~8 KB  地图数据
+    *   [Seqlock car_lock  ]  64 B   CarData 的 seq 计数器（读者用）
+    *   [ProcMutex         ]  64 B   CarData 的写者互斥锁（写者用）
+    *   [CarData           ]  ~1 KB  小车状态
     *
-    * 锁和数据分开排列而不是内嵌在数据结构里，
-    * 是为了让 Seqlock 本身不被写操作的 memcpy 覆盖。
+    * Seqlock 和 ProcMutex 分开排列而不是内嵌在数据结构里，
+    * 是为了让它们不被写操作的 memcpy 覆盖。
+    *
+    * 注意：本版本将 kShmVersion 改为 2，旧进程 attach 时将拒绝连接。
     */
     struct ShmLayout {
-        ShmHeader header;       // offset 0
+        ShmHeader   header;              // offset 0
 
-        Seqlock   map_lock;     // offset 64      — MapData 的锁
-        MapData   map;          // offset 128
+        Seqlock     map_lock;            // offset 64       — MapData 的 seq 计数器
+        ProcMutex   map_write_mutex;     // offset 128      — MapData 的写者互斥锁（新增）
+        MapData     map;                 // offset 192
 
-        Seqlock   car_lock;     // 紧随 map 之后  — CarData 的锁
-        CarData   cars;         // 紧随 car_lock
+        Seqlock     car_lock;            // 紧随 map 之后  — CarData 的 seq 计数器
+        ProcMutex   car_write_mutex;     //                — CarData 的写者互斥锁（新增）
+        CarData     cars;                // 紧随 car_write_mutex
     };
 }

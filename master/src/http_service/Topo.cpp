@@ -128,7 +128,7 @@ int main() {
                     uint16_t nid = node_id_from_str(ns);
                     int idx = find_node_idx(snap, nid);
                     if (idx >= 0) {
-                        agv::SeqlockWriteGuard g(shm->map_lock);
+                        agv::SeqlockMWWriteGuard g(shm->map_write_mutex, shm->map_lock);
                         shm->map.nodes_[idx].status = agv::NodeStatus::FAULT;
                     }
                 }
@@ -168,7 +168,7 @@ int main() {
                     uint16_t nid = node_id_from_str(ns);
                     int idx = find_node_idx(snap, nid);
                     if (idx >= 0) {
-                        agv::SeqlockWriteGuard g(shm->map_lock);
+                        agv::SeqlockMWWriteGuard g(shm->map_write_mutex, shm->map_lock);
                         shm->map.nodes_[idx].status = agv::NodeStatus::IDLE;
                     }
                 }

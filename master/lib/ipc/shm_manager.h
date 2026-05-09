@@ -112,9 +112,13 @@ public:
 
         // 用 placement new 初始化含 atomic 的字段（不能用 memset）
         // 数据区用 value-initialization 清零
+        // 注意：ProcMutex 不参与 placement new，由 init() 单独初始化
         new (&shm_->map_lock) Seqlock();
+        shm_->map_write_mutex.init();      // PTHREAD_PROCESS_SHARED + ROBUST
         new (&shm_->map)      MapData{};
+
         new (&shm_->car_lock) Seqlock();
+        shm_->car_write_mutex.init();      // PTHREAD_PROCESS_SHARED + ROBUST
         new (&shm_->cars)     CarData{};
 
         // 写 header（最后写，initialized 标志位最后置 1）
@@ -133,6 +137,8 @@ public:
 
     ~ShmOwner() {
         if (is_attached()) {
+            shm_->map_write_mutex.destroy();
+            shm_->car_write_mutex.destroy();
             ::shm_unlink(kShmName);
             fprintf(stderr, "[shm_owner] unlinked %s\n", kShmName);
         }
@@ -242,7 +248,7 @@ inline Edge shm_read_edge(ShmLayout* shm, uint16_t edge_idx) {
 inline void shm_set_edge_status(ShmLayout* shm,
                                  uint16_t   edge_idx,
                                  EdgeStatus status) {
-    SeqlockWriteGuard g(shm->map_lock);
+    SeqlockMWWriteGuard g(shm->map_write_mutex, shm->map_lock);
     shm->map.edges_[edge_idx].status = status;
 }
 
@@ -284,7 +290,7 @@ inline Car shm_read_car(ShmLayout* shm, uint8_t car_idx) {
  *   shm_update_car(shm, car_idx, updated);
  */
 inline void shm_update_car(ShmLayout* shm, uint8_t car_idx, const Car& car) {
-    SeqlockWriteGuard g(shm->car_lock);
+    SeqlockMWWriteGuard g(shm->car_write_mutex, shm->car_lock);
     shm->cars.cars_[car_idx] = car;
 }
 
@@ -295,7 +301,7 @@ inline void shm_set_car_status(ShmLayout* shm,
                                 uint8_t    car_idx,
                                 CarStatus  status,
                                 uint8_t    current_node) {
-    SeqlockWriteGuard g(shm->car_lock);
+    SeqlockMWWriteGuard g(shm->car_write_mutex, shm->car_lock);
     shm->cars.cars_[car_idx].status          = status;
     shm->cars.cars_[car_idx].current_node_id = current_node;
 }

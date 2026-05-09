@@ -35,8 +35,8 @@ void init_car(agv::ShmLayout* shm_ptr){
         .status          = agv::CarStatus::IDLE,
         .current_node_id = 0,
         .current_task_id = 0,
-        .last_start_node_id=1,
         .target_node_id  = 0,
+        .last_start_node_id=1,
         .path_len        = 0,
     };
     shm_ptr->cars.cars_[1] = {
@@ -44,8 +44,8 @@ void init_car(agv::ShmLayout* shm_ptr){
         .status          = agv::CarStatus::IDLE,
         .current_node_id = 2,
         .current_task_id = 0,
-        .last_start_node_id=2,
         .target_node_id  = 0,
+        .last_start_node_id=2,
         .path_len        = 0,
     };
 }
