@@ -24,17 +24,17 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "[child] FATAL: %s\n", e.what());
         ::exit(1);
     }
-    auto op_name=argv[0];
-    agv::MqttPublishMsg msg=agv::MqttPublishMsg::make_ort(1,agv::OriCmd::kARRIVED);
+    auto op_name=argv[1];
+    agv::MqttPublishMsg msg=agv::MqttPublishMsg::make_action(1,agv::ActionCmd::kPause);
     switch (op_name[0]) {
         case 'a':
             if(op_name[1]=='1')msg=agv::MqttPublishMsg::make_angle(1,12);
-            if(op_name[1]=='2')msg=agv::MqttPublishMsg::make_angle(1,3s12);
+            if(op_name[1]=='2')msg=agv::MqttPublishMsg::make_angle(1,312);
             break;
         case 'o':
             if(op_name[1]=='1')msg=agv::MqttPublishMsg::make_ori(1,agv::OriCmd::kLeft);
             if(op_name[1]=='2')msg=agv::MqttPublishMsg::make_ori(1,agv::OriCmd::kRight);
-            if(op_name[1]=='3')msg=agv::MqttPublishMsg::make_ori(1,agv::OriCmd::kForward);
+            if(op_name[1]=='3')msg=agv::MqttPublishMsg::make_ori(1,agv::OriCmd::kStraight);
             if(op_name[1]=='4')msg=agv::MqttPublishMsg::make_ori(1,agv::OriCmd::kARRIVED);
             break;
         case 'q':
@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
             if(op_name[1]=='2')msg=agv::MqttPublishMsg::make_query(1,agv::QueryCmd::kLog);
             break;
         case 'c':
-            if(op_name[1]=='1')msg=agv::MqttPublishMsg::make_action(1,agv::ActionCmd::kStop);
+            if(op_name[1]=='1')msg=agv::MqttPublishMsg::make_action(1,agv::ActionCmd::kPause);
             if(op_name[1]=='2')msg=agv::MqttPublishMsg::make_action(1,agv::ActionCmd::kProcess);
             if(op_name[1]=='3')msg=agv::MqttPublishMsg::make_action(1,agv::ActionCmd::kReboot);
             if(op_name[1]=='4')msg=agv::MqttPublishMsg::make_action(1,agv::ActionCmd::kUturn);

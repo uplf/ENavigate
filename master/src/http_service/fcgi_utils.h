@@ -26,6 +26,9 @@
 #include <functional>
 #include <string>
 #include <vector>
+// nlohmann/json 需要在 fcgi_stdio.h 之前 include，避免 FILE 宏污染
+// 使用本头文件的 cpp 文件必须先 include <nlohmann/json.hpp>
+// 参见 Status.cpp / Topo.cpp / Task.cpp 的 include 顺序
 
 namespace agv::http {
 
@@ -110,6 +113,7 @@ inline bool handle_preflight() {
  * 仅支持 "key":"value" 格式。
  * 找不到返回空字符串。
  */
+ /*
 inline std::string json_str(const std::string& json, const char* key) {
     // 构造搜索模式 "key":"
     std::string needle = std::string("\"") + key + "\":\"";
@@ -121,12 +125,19 @@ inline std::string json_str(const std::string& json, const char* key) {
     if (end == std::string::npos) return {};
     return json.substr(start, end - start);
 }
-
+*/
+inline std::string json_str(const std::string& json_str, const char* key) {
+    auto j = json::parse(json_str);
+    if (j.contains(key) && j[key].is_string()) 
+        return j[key].get<std::string>();
+    return {};
+}
 /**
  * 从 JSON 中提取数组字段的所有字符串元素。
  * 支持 "key":["L2","L8"] 格式。
  * 返回元素列表（不含引号）。
  */
+ /*
 inline std::vector<std::string> json_str_array(const std::string& json,
                                                 const char* key) {
     std::vector<std::string> result;
@@ -147,6 +158,32 @@ inline std::vector<std::string> json_str_array(const std::string& json,
         }
         // 否则返回空 result
     } catch (const nlohmann::json::parse_error&) {
+        // 解析失败时返回空向量（与原实现行为一致）
+    }
+
+    return result;
+}*/
+
+inline std::vector<std::string> json_str_array(const std::string& json_str,
+                                                const char* key) {
+    std::vector<std::string> result;
+
+    try {
+        // 解析 JSON 字符串
+        auto j = json::parse(json_str);
+
+        // 检查 key 是否存在且值为数组
+        if (j.contains(key) && j[key].is_array()) {
+            const auto& arr = j[key];
+            for (const auto& elem : arr) {
+                if (elem.is_string()) {
+                    result.push_back(elem.get<std::string>());
+                }
+                // 如果数组中包含非字符串元素，按原函数行为忽略它们
+            }
+        }
+        // 否则返回空 result
+    } catch (const json::parse_error&) {
         // 解析失败时返回空向量（与原实现行为一致）
     }
 

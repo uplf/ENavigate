@@ -38,6 +38,8 @@ start() {
         -n \
         -- "$API_DIR/Topo" >> "$LOG_DIR/topo.log" 2>&1 &
 
+    sleep 0.5
+    chmod 666 "$SOCK_DIR"/*.sock
     echo "[start_api] all started. sockets in $SOCK_DIR"
 }
 

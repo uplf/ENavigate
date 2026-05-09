@@ -232,18 +232,18 @@ struct MqttPublishMsg {
         // 根据 cmd_type 和参数生成 payload（示例为 JSON 格式）
         switch (cmd_type) {
             case MqttCmdType::CMD_angle:
-                snprintf(payload_buf,payload_buf_size,"{\"param\":%u}", params.c_angle.angle);
+                snprintf(payload_buf,payload_buf_size,"{\"type\":\"ANGLE\",\"param\":%u}", params.c_angle.angle);
                 break;
             case MqttCmdType::CMD_ori:
-                snprintf(payload_buf, payload_buf_size, "{\"param\":\"%s\"}",
+                snprintf(payload_buf, payload_buf_size, "{\"type\":\"ORIENT\",\"param\":\"%s\"}",
                          ori_cmd_to_str(params.c_ori.cmd).c_str());
                 break;
             case MqttCmdType::QUERY:
-                snprintf(payload_buf, payload_buf_size, "{\"param\":\"%s\"}",
+                snprintf(payload_buf, payload_buf_size, "{\"type\":\"QUERY\",\"param\":\"%s\"}",
                          query_cmd_to_str(params.c_query.cmd).c_str());
                 break;
             case MqttCmdType::ACTION:
-                snprintf(payload_buf, payload_buf_size, "{\"param\":\"%s\"}",
+                snprintf(payload_buf, payload_buf_size, "{\"type\":\"ACTION\",\"param\":\"%s\"}",
                          action_cmd_to_str(params.c_action.cmd).c_str());
                 break;
             default:
