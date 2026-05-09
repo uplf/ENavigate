@@ -636,7 +636,81 @@ const char* name() const;
 
 ## 模型存储层
 
-注意，在这之前还有seqlock服务，在这里略去。
+### seqlock + ProcMutex — 轻量读写同步与写者互斥
+
+#### Seqlock — 顺序锁（读者/写者同步）
+
+`Seqlock` 嵌入在 SHM 中，提供读者-写者同步。读者无锁阻塞，写者通过 seq 计数器通知读者重试。
+
+**写者接口**：
+
+```cpp
+void write_begin();   // seq 奇数化（写中标记）
+void write_end();     // seq 偶数化（数据就绪）
+```
+
+**读者接口**：
+
+```cpp
+uint32_t read_begin();           // 读前取 seq，奇数时自旋等待
+bool     read_end(uint32_t seq); // 读后校验 seq 是否一致
+```
+
+**RAII 辅助**：
+
+```cpp
+// 读者快照宏
+#define SEQLOCK_READ(lock, body) \
+    do { uint32_t _seq; do { _seq = (lock).read_begin(); { body } } \
+    while (!(lock).read_end(_seq)); } while (0)
+
+// 写者守卫（需配合 ProcMutex 使用，见下文）
+SeqlockMWWriteGuard g(mutex, lock);
+```
+
+> 注意：`Seqlock` 的 `write_begin/write_end` 本身不提供多写者互斥，
+> 多写者安全由下方的 `ProcMutex` 保证。
+
+#### ProcMutex — 进程共享写者互斥锁
+
+`ProcMutex` 封装 `pthread_mutex_t`，配置 `PTHREAD_PROCESS_SHARED` + `PTHREAD_MUTEX_ROBUST`。
+
+- 启用 `ROBUST`：持锁进程崩溃后，下一个写者自动恢复锁状态，不会永久死锁。
+- 每个 `ProcMutex` 对齐到 64 字节（一个 cacheline），与 `Seqlock` 相邻排列。
+
+```cpp
+struct alignas(64) ProcMutex {
+    void init();      // PTHREAD_PROCESS_SHARED + ROBUST 初始化
+    void destroy();   // 销毁互斥锁
+    void lock();      // 加锁（EOWNERDEAD 时自动 pthread_mutex_consistent）
+    void unlock();    // 解锁
+};
+```
+
+#### SeqlockMWWriteGuard — 多写者安全的 RAII 写守卫
+
+锁序固定：`ProcMutex.lock()` → `Seqlock.write_begin()` → 写数据 → `write_end()` → `unlock()`。
+
+读者不碰 `ProcMutex`，读性能不受影响。
+
+```cpp
+{
+    SeqlockMWWriteGuard g(shm->map_write_mutex, shm->map_lock);
+    shm->map.edges_[i].status = EdgeStatus::BLOCKED;
+}   // 析构时自动 write_end + unlock
+```
+
+#### ShmLayout 中锁的排列布局
+
+```
+[ShmHeader    ]  64 B
+[map_lock     ]  64 B   ← MapData 的 Seqlock
+[map_write_mtx]  64 B   ← MapData 的 ProcMutex（写者互斥）
+[MapData      ]  ~8 KB
+[car_lock     ]  64 B   ← CarData 的 Seqlock
+[car_write_mtx]  64 B   ← CarData 的 ProcMutex（写者互斥）
+[CarData      ]  ~1 KB
+```
 
 ### SHM管理器
 
@@ -695,8 +769,9 @@ void create_and_init()
   3. `ftruncate` 设定大小
   4. `mmap` 映射
   5. placement new 初始化 `Seqlock`
-  6. value-initialize 清零 `MapData` / `CarData`
-  7. 写入 `ShmHeader`，最后设置 `initialized = 1`
+  6. 调用 `ProcMutex::init()` 初始化 `map_write_mutex` 和 `car_write_mutex`
+  7. value-initialize 清零 `MapData` / `CarData`
+  8. 写入 `ShmHeader`，最后设置 `initialized = 1`
 - 异常：
   - `std::runtime_error`：创建失败、`ftruncate` 失败、`mmap` 失败 等
 
@@ -774,6 +849,7 @@ void shm_set_edge_status(ShmLayout* shm, uint16_t edge_idx, EdgeStatus status)
 ```
 
 - 修改单条边状态。
+- 写操作使用 `SeqlockMWWriteGuard`（内部先持互斥锁再写 seq），多写者安全。
 
 ###### CarData读（全部）
 
@@ -799,6 +875,7 @@ void shm_update_car(ShmLayout* shm, uint8_t car_idx, const Car& car)
 ```
 
 - 更新单辆车完整状态。
+- 写操作使用 `SeqlockMWWriteGuard`（内部先持互斥锁再写 seq），多写者安全。
 
 ###### CarData写（单条状态）
 
@@ -807,4 +884,5 @@ void shm_set_car_status(ShmLayout* shm, uint8_t car_idx, CarStatus status, uint8
 ```
 
 - 仅更新车的状态字段和当前位置节点 ID。
+- 写操作使用 `SeqlockMWWriteGuard`（内部先持互斥锁再写 seq），多写者安全。
 
