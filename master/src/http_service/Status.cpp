@@ -141,6 +141,7 @@ static void build_status_json(const agv::MapData& map,
     append(out, cap, pos, "\"edges\":{");
     for (uint16_t i = 0; i < map.edge_count_; ++i) {
         const auto& e = map.edges_[i];
+        if(edge_pair.find(e.id)==edge_pair.end())continue;//双向边只显示一次
         if (i > 0) append(out, cap, pos, ",");
         append(out, cap, pos,
                "\"L%d\":{\"status\":\"%s\",\"weight\":\"%d\",\"from\":\"N%u\",\"to\":\"N%u\"}",

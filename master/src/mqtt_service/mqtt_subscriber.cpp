@@ -8,6 +8,7 @@
 #include "mq_wrapper.h"
 #include "config/config.h"
 #include "logger.h"
+#include "shm_manager.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -27,6 +28,7 @@ enum class EventType : uint8_t {
     kREPAIRED = 2,
     kACK=3,
     kINFO=4,
+    kPOSITION=5,
 };
 
 struct CarEvent {
@@ -34,8 +36,10 @@ struct CarEvent {
     uint8_t   car_id;    // 从 topic 中解析
 
     int16_t   val_param;
+    int16_t   val_param2;  // 仅部分事件使用
     std::string param;
     bool is_temporary;  // 仅针对障碍事件，表示是否为临时障碍
+    bool pass_th;       //仅针对障碍实践，表示小车是否已经通过阈值
 };
 
 /**
@@ -110,10 +114,11 @@ static CarEvent parse_event(const char* topic, const char* payload) {
         const char* kind_val = json_get(payload, "param", &vlen);
         if (kind_val && vlen < AGC_MAX_LABEL-1) {
             char buf[AGC_MAX_LABEL];
-            memcpy(buf, kind_val, vlen);
-            buf[vlen] = '\0'; 
+            memcpy(buf, kind_val+1, vlen-2);
+            buf[vlen-2] = '\0'; 
             ev.param = std::string(buf);
             ev.is_temporary = is_temp(buf);
+            ev.pass_th = (buf[0]=='n')?false:true;  // 初始化为 false
         }else{
             LOG_ERROR(PROC_NAME,"failed to analyse json");
         }
@@ -123,8 +128,27 @@ static CarEvent parse_event(const char* topic, const char* payload) {
         ev.type = EventType::kACK;
     } else if (strncmp(type_val, "INFO", vlen) == 0) {
         ev.type = EventType::kINFO;
+    } else if(strncmp(type_val, "POSITION", vlen) == 0){
+        ev.type = EventType::kPOSITION;
+        //
     } else {
         LOG_ERROR(PROC_NAME,"unknown event type in json");
+        const char* kind_val = json_get(payload, "param", &vlen);
+        //kind_val字段的内容格式：“12-23”，下面的程序将前面的数字和后面的数字分别放到val_param和val_param2中
+        while((*kind_val<'0'||*kind_val>'9')&&*kind_val!='\0')++kind_val;
+        int tmp=0;
+        while(*kind_val>='0'&&*kind_val<='9'){
+            tmp=tmp*10+(*kind_val-'0');
+            ++kind_val;
+        }
+        ev.val_param=tmp;
+        while((*kind_val<'0'||*kind_val>'9')&&*kind_val!='\0')++kind_val;
+        tmp=0;
+        while(*kind_val>='0'&&*kind_val<='9'){
+            tmp=tmp*10+(*kind_val-'0');
+            ++kind_val;
+        }
+        ev.val_param2=tmp;
     }
     //涉及到数字的操作
     //if (node_val) {
@@ -145,6 +169,12 @@ public:
     }
     void set_mq_publish(agv::MqSender<agv::MqttPublishMsg>* mq) {
         mq_pub_ = mq;
+    }
+    void set_mq_route(agv::MqSender<agv::RouteExertMsg>* mq) {
+        mq_route_ = mq;
+    }
+    void set_shm_client() {
+        _shm.attach(500);
     }
 
 protected:
@@ -181,14 +211,53 @@ protected:
 private:
     //TODO---根据小车情况采取行动
     //_Static_assert(0, "This macro is not allowed");
+    bool alter_edges_status(uint16_t car_id,agv::EdgeStatus status,const char* label){
+        auto snap=agv::shm_read_car(_shm.ptr(),car_id-1);
+        uint16_t from_node=snap.last_node_id;
+        uint16_t to_node=snap.current_node_id;
+        auto map=agv::shm_read_map(_shm.ptr());
+        uint16_t edge_id=0xFFFF,edge_id2;
+        for(int i=0;i<map.adj_[from_node].count;++i){
+            edge_id=map.adj_[from_node].edge_ids[i];
+            if(map.edges_[edge_id-1].to_node==to_node){
+                agv::shm_set_edge_status(_shm.ptr(), edge_id-1, status, label);
+                for(auto j:edge_pair){
+                    if(j.second.get_other_path(edge_id,&edge_id2)!=-1){
+                        agv::shm_set_edge_status(_shm.ptr(), edge_id2-1, status, label);
+                        break;
+                    }
+                }
+                return true;
+            }
+        }
+        return false;
+    }
 
     void dispatch(const CarEvent& ev, const char* raw_payload) {
         switch (ev.type) {
             case EventType::kARRIVE:{
+                mq_route_->send(agv::RouteExertMsg::apply(ev.car_id));
                 LOG_INFO(PROC_NAME,"car%u arrived at node%u", ev.car_id, ev.val_param);
                 break;
             }
-             case EventType::kREPAIRED:{
+            case EventType::kOBSTACLE:{
+                LOG_INFO(PROC_NAME,"car%u detected %s obstacle", ev.car_id, ev.param.c_str());
+                //如果不是临时障碍，开始重规划
+                if(!ev.is_temporary){
+                    alter_edges_status(ev.car_id,agv::EdgeStatus::FAULT_REPAIR,ev.param.c_str());
+                     mq_task_->send(agv::TaskDispatchMsg::replan(ev.car_id,
+                        (ev.pass_th?agv::ImmeStra::kUturnNoCross:agv::ImmeStra::kUturn)));
+                }else{
+                    //TODO---如果不是永久障碍，仅更新状态////
+                    alter_edges_status(ev.car_id,agv::EdgeStatus::FAULT_TEMP,ev.param.c_str());
+                    shm_set_car_status(_shm.ptr(),ev.car_id-1,agv::CarStatus::WAIT);
+                    LOG_INFO(PROC_NAME,"car%u sent cancel cmd due to permanent obstacle", ev.car_id);
+                }
+                break;
+            }
+            case EventType::kREPAIRED:{
+                alter_edges_status(ev.car_id,agv::EdgeStatus::IDLE,"");
+                shm_set_car_status(_shm.ptr(),ev.car_id-1,agv::CarStatus::MOVING);
                 LOG_INFO(PROC_NAME,"car%u repaired obstacle", ev.car_id);
                 break;
             }
@@ -196,8 +265,19 @@ private:
                 LOG_INFO(PROC_NAME,"car%u ack cmd", ev.car_id);
                 break;
             }
-             case EventType::kINFO:{
+            case EventType::kINFO:{
                 LOG_INFO(PROC_NAME,"car%u info: %s", ev.car_id, ev.param.c_str());
+                break;
+            }
+            case EventType::kPOSITION:{
+                agv::Car snap=agv::shm_read_car(_shm.ptr(),ev.car_id-1);
+                snap.current_node_id=ev.val_param2;
+                snap.last_node_id=ev.val_param;
+                snap.current_task_id=0;
+                snap.path_len=0;
+                snap.status=agv::CarStatus::IDLE;
+                agv::shm_update_car(_shm.ptr(),ev.car_id-1,snap);
+                LOG_INFO(PROC_NAME,"car%u position: %d-%d", ev.car_id, ev.val_param, ev.val_param2);
                 break;
             }
             default:
@@ -207,6 +287,8 @@ private:
     }
     agv::MqSender<agv::TaskDispatchMsg>* mq_task_ {nullptr};
     agv::MqSender<agv::MqttPublishMsg>*  mq_pub_  {nullptr};
+    agv::MqSender<agv::RouteExertMsg>*  mq_route_  {nullptr};
+    agv::ShmClient _shm;
 };
 
 
@@ -226,11 +308,13 @@ int main() {
     // MQ 发送端（可选，若 MQ 未启动则跳过）
     agv::MqSender<agv::TaskDispatchMsg> mq_task;
     agv::MqSender<agv::MqttPublishMsg>  mq_pub;
+    agv::MqSender<agv::RouteExertMsg>  mq_route;
     bool mq_available = false;
 
     try {
         mq_task.init(agv::kMqTaskDispatch, agv::kTaskDispatchMsgSize);
         mq_pub .init(agv::kMqMqttPublish,  agv::kMqttPublishMsgSize);
+        mq_route.init(agv::kMqRouteExert, agv::kRouteExertMsgSize);
         mq_available = true;
         LOG_INFO(PROC_NAME,"MQ connected");
     } catch (const std::exception& e) {
@@ -242,9 +326,11 @@ int main() {
     if (mq_available) {
         mqtt.set_mq_task(&mq_task);
         mqtt.set_mq_publish(&mq_pub);
+        mqtt.set_mq_route(&mq_route);
     }
 
     try {
+        mqtt.set_shm_client();
         mqtt.init("agv-subscriber");
         mqtt.connect(host, port);
     } catch (const std::exception& e) {
@@ -258,6 +344,7 @@ int main() {
         exit_seq.add_cleanup("mq_close", [&] {
             mq_task.close();
             mq_pub.close();
+            mq_route.close();
         });
     }
 

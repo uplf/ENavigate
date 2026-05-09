@@ -4,10 +4,9 @@
 #include <atomic>
 #include <thread>
 #include <chrono>
-#include "planner.h"
+#include "router.h"
 
-const char* proc_name="planner";
-
+const char* proc_name="router";
 
 int main(){
     LOG_INFO(proc_name,"begin");
@@ -18,16 +17,17 @@ int main(){
         LOG_FATAL(proc_name,"%s",e.what());
         return 1;
     }
+
     agv::MqReceiver<agv::TaskDispatchMsg> mq;
     try {
-        mq.init(kMqTaskDispatch);
+        mq.init(kMqRouteExert);
     } catch (const std::exception& e) {
         LOG_ERROR(proc_name,"fail to create mq:%s",e.what());
         return 1;
     }
-    agv::planner planner_instance;
-    if(!planner_instance.init()){
-        LOG_ERROR(proc_name,"planner init failed");
+    agv::router router_instance;
+    if(!router_instance.init()){
+        LOG_ERROR(proc_name,"router init failed");
         return 1;
     }
 
@@ -35,7 +35,7 @@ int main(){
     agv::SecureExit exit_seq(proc_name);
     exit_seq.add_cleanup("finish",[&]{LOG_INFO(proc_name,"finish unlinking mq");});
     exit_seq.add_cleanup("unlink-mq",[&]{});
-    exit_seq.add_cleanup("unlink-mq",[&]{planner_instance.do_cleanup();});
+    exit_seq.add_cleanup("unlink-mq",[&]{router_instance.do_cleanup();});
 
     //组建 poll 监听数组
     constexpr int FD_SIG = 0;
@@ -64,10 +64,10 @@ int main(){
             continue;
         }
         if (fds[FD_MQ].revents & POLLIN) {
-            agv::TaskDispatchMsg msg_recv={};
+            agv::RouteExertMsg msg_recv={};
             unsigned proi;
             mq.receive(msg_recv,proi);
-            planner_instance.handle_task(msg_recv);
+            router_instance.handle_task(msg_recv);
             continue;
         }     
     }

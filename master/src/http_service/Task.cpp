@@ -73,7 +73,7 @@ int main() {
             std::string target_str = json_str(body, "target");
             dprintf(2, "recv:%s->%s | %s\n", body.c_str(),car_str.c_str(),target_str.c_str());
             if (car_str.empty() || target_str.empty()) {
-                reply_err(400, "缺少 car 或 target 字段le");
+                reply_err(400, "缺少 car 或 target 字段");
                 continue;
             }
 
@@ -93,7 +93,7 @@ int main() {
                 auto msg = agv::TaskDispatchMsg::assign(
                     car_id,
                     static_cast<uint8_t>(node_id),
-                    /*immediate=*/true);
+                    agv::ImmeStra::kImme);
                 mq.send(msg, agv::kPrioNormal);
             }
 

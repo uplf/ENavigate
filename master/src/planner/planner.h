@@ -1,6 +1,4 @@
 #pragma once
-#include <mosquitto.h>
-
 #include <atomic>
 #include <cstdio>
 #include <cstring>
@@ -38,8 +36,9 @@ namespace agv{
             try {
                 LOG_INFO(proc_name,"init");
                 _shm.attach(500);
-                _mq_recv.init(kMqTaskDispatch);
+                _mq_send_redis.init(kMqTaskDispatch);
                 _mq_send.init(kMqMqttPublish);
+                _mq_route.init(kMqRouteExert);
             } catch (const std::exception& e) {
                 LOG_ERROR(proc_name,"fail to create mq:%s",e.what());
                 return false;
@@ -55,45 +54,110 @@ namespace agv{
                     msg.car_id, msg.target_node, msg.immediate);
             auto map_data=shm_read_map(_shm.ptr());
             auto car_data=shm_read_cars(_shm.ptr());
-            if(msg.car_id>car_data.car_count_||){
+            if(msg.car_id>car_data.car_count_||msg.car_id==0){
                 LOG_ERROR(proc_name,"invaild car no.");
                 return false;
             }
-            if(car_data.cars_[msg.car_id-1]==agv::CarStatus::FAULT||car_data.cars_[msg.car_id-1]==agv::CarStatus::OFFLINE)
+            auto current_car=car_data.cars_[msg.car_id-1];
+            if(current_car.status==agv::CarStatus::FAULT||current_car.status==agv::CarStatus::OFFLINE)
             {
                 LOG_ERROR(proc_name,"unavailable car");
                 return false;
             }
-            uint16_t target_node=msg.target_node;
-            if(msg.action==agv::TaskAction::kReplan)target_node=car_data.cars_[msg.car_id-1].target_node_id;
-            if(msg.action==agv::TaskAction::kCancel)target_node=car_data.cars_[msg.car_id-1].last_start_node_id;
-            auto path=find_path(map_data,car_data.cars_[msg.car_id-1].current_node_id,target_node);
-            if(path.empty()){
-                LOG_ERROR(proc_name,"fail to schedule");
+            uint16_t target_node=msg.target_node,start_node=current_car.current_node_id;
+
+            //对于特殊情况（重新规划/取消）-调整目标节点
+            if(msg.action==agv::TaskAction::kReplan)target_node=current_car.target_node_id;
+            if(msg.action==agv::TaskAction::kCancel)target_node=current_car.last_start_node_id;
+            //对于bef_threshold为真的处理，0.判断掉头到新路线是否可行 1.调整出发的节点信息 2.调整当前节点信息为处理后的节点状态
+            if(msg.immediate==ImmeStra::kUturnNoCross){start_node=current_car.last_node_id;}
+            if(msg.immediate==ImmeStra::kUturn){
+                //判断last_node_id引出的路线中有没有和当前所在路线反向的路径
+                auto last_node_id=current_car.last_node_id;
+                auto current_node_id=current_car.current_node_id;
+                uint16_t rev_node=0xFFFF;
+                for(int i=0;i<map_data.adj_[last_node_id].count_;++i){
+                    //遍历其他连接的路径
+                    auto edge_id=map_data.adj_[last_node_id].edge_ids_[i];
+                    if(edge_id>=map_data.edge_count_)continue;
+                    auto edge=map_data.edges_[edge_id];
+                    auto node_s=map_data.nodes_[edge.to_node_];
+                    //确认对应的点不是当前点，并且线路没封
+                    if(node_s.id==current_node_id||e
+                        edge.status_==agv::EdgeStatus::BLOCKED||
+                        edge.status_!=agv::EdgeStatus::IDLE)continue;
+                    //判断是否为反向点
+                    if(jud_rev(node_s.x,node_s.y,map_data.nodes_[last_node_id].x,map_data.nodes_[last_node_id].y,
+                        map_data.nodes_[last_node_id].x,map_data.nodes_[last_node_id].y)){
+                        rev_node=node_s;
+                        break;
+                    }
+                }
+                if(rev_node==0xFFFF){
+                    LOG_ERROR(proc_name,"failed to find a rev-node for the car%u will remain at node",msg.car_id);
+                    //TODO:更新小车状态
+                    return false;
+                }else start_node=rev_node;
+            }
+            auto path=find_path(map_data,current_car.current_node_id,target_node);
+            if(path.empty()||path.size()>AGV_MAX_PATHLEN){
+                LOG_ERROR(proc_name,"fail to schedule | reason:A-no path available;B-path too long;C-pramgram err");
                 switch(msg.action){
                     case agv::TaskAction::kAssign:
                         LOG_ERROR(proc_name,"failed to assign, reject the schedule for car %u",msg.car_id);
                         return false;
                     case agv::TaskAction::kCancel:
                         LOG_ERROR(proc_name,"failed to cancel, the car%u will remain at node",msg.car_id);
-                        
-                        //TODO: 更新线路状态，让小车停在原地
+                        _mq_send(MqttPublishMsg::make_action(msg.car_id, ActionCmd::kPause),kPrioHigh);
+                        //TODO: 更新线路状态
                         return false;
                     case agv::TaskAction::kReplan:
                         LOG_ERROR(proc_name,"failed to replan, prepare to cancel task for car %u",msg.car_id);
-                        _mq_send.send(TaskDispatchMsg::cancel(msg.car_id),kPrioHigh);
+                        _mq_send_redis.send(TaskDispatchMsg::cancel(msg.car_id,msg.immediate),kPrioHigh);
                         return false;
                 }
-                //
-                if(car_data.cars_[msg.car_id-1].current_node_id!=car_data.cars_[msg.car_id-1].current_node_id){
-
-                }
+                //下面这一段我也不知道哪来的
+                //if(car_data.cars_[msg.car_id-1].current_node_id!=car_data.cars_[msg.car_id-1].current_node_id){
+                //}
                 return false;
             }
+            //更新路径信息and小车信息
+            if(msg.immediate==ImmeStra::kUturnNoCross)current_car.last_node_id=current_car.current_node_id;
+            current_car.current_node_id=start_node;
+            current_car.path_len=0;
+            current_car.status=CarStatus::MOVING;
+            for(auto i:path){
+                current_car.path_stack[current_car.path_len]=i;
+                current_car.path_len++;
+            }
+            shm_update_car(_shm.ptr(),msg.car_id-1,current_car);
 
+            //根据immediate即时发布对应信息
+            switch(msg.immediate){
+                case agv::ImmeStra::kUturn:{
+                    _mq_send(MqttPublishMsg::make_action(msg.car_id, ActionCmd::kUturn),kPrioHigh);
+                    break;
+                }
+                case agv::ImmeStra::kUturnNoCross:{
+                    _mq_send(MqttPublishMsg::make_action(msg.car_id, ActionCmd::kUturn),kPrioHigh);
+                    break;
+                }
+                case agv::ImmeStra::kImme:{
+                    _mq_send(MqttPublishMsg::make_action(msg.car_id, ActionCmd::kProcess),kPrioHigh);
+                    break;
+                }
+            }
             LOG_INFO(proc_name,"find_path result size=%zu",path.size());
         }
-
+        private:
+        bool jud_rev(uint16_t x1,uint16_t y1,uint16_t x2,uint16_t y2,uint16_t x3,uint16_t y3){
+            
+            int cal_a=(int(x3)-int(x1));
+            int cal_b=(int(y3)-int(y1));
+            int cal_c=(int(x3)-int(x2));
+            int cal_d=(int(y3)-int(y2));
+            return cal_a*cal_d-cal_b*cal_c==0;
+        }
         std::vector<uint16_t> find_path(agv::MapData map_data, uint16_t start_node, uint16_t target_node) {
             std::priority_queue<AStarNode, std::vector<AStarNode>, std::greater<AStarNode>> open_set;
 
@@ -170,14 +234,14 @@ namespace agv{
             }
             return {};
         }
-        private:
         static float heuristic(const Node& a, const Node& b) {
             float dx = static_cast<float>(a.x) - static_cast<float>(b.x);
             float dy = static_cast<float>(a.y) - static_cast<float>(b.y);
             return std::sqrt(dx * dx + dy * dy);
         }
         agv::ShmClient _shm;
-        agv::MqReceiver _mq_recv;
-        agv::MqSender _mq_send;
+        agv::MqSender<TaskDispatchMsg> _mq_send_redis;//发送调度消息，用于重排
+        agv::MqSender<MqttPublishMsg> _mq_send;//发送mqtt消息，用于即时指令
+        agv::MqSender<RouteExertMsg> _mq_route;//发送路径启动消息，用于即时指令
     };
 }

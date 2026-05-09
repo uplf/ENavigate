@@ -2,6 +2,9 @@
 前面加_的可以注释掉，前面不加_的不可以
 */
 
+//****模式区 */
+//是否使用角度模式，若不适用，请注释
+//#define _AGV_USE_ANGLE_MODE
 
 //****调试区 */
 //是否打印注释，若不直接打印，请注释
@@ -37,6 +40,9 @@
 
 //属于暂时的障碍
 #define AGC_TMP_OBSTACLE "apple", "banana", "orange", nullptr
+
+//确定小车编号和shm编号的对应关系并更新到全部文件中才能移除并编译
+not_allow_to_compile_if_not_removed;
 
 
 //#define DO_NOT_USE _Static_assert(0, "This macro is not allowed")

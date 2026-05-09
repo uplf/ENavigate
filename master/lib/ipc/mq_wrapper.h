@@ -242,6 +242,7 @@ public:
     void create_all() {
         create(kMqTaskDispatch, kTaskDispatchMaxMsg, kTaskDispatchMsgSize);
         create(kMqMqttPublish,  kMqttPublishMaxMsg,  kMqttPublishMsgSize);
+        create(kMqRouteExert,  kRouteExertMaxMsg,  kRouteExertMsgSize);
     }
 
     void unlink_all() {

@@ -59,7 +59,7 @@ static void trigger_replan_all(agv::ShmLayout* shm,
     agv::CarData snap = agv::shm_read_cars(shm);
     for (uint16_t i = 0; i < snap.car_count_; ++i) {
         auto s = static_cast<uint8_t>(snap.cars_[i].status);
-        if (s == 1 /*MOVING*/) {
+        if (s == 1||s==4 /*MOVING or WAITING*/) {
             auto msg = agv::TaskDispatchMsg::replan(snap.cars_[i].id);
             mq.send(msg, agv::kPrioHigh);
         }
@@ -123,6 +123,13 @@ int main() {
                     int idx = find_edge_idx(snap, eid);
                     if (idx >= 0)
                         agv::shm_set_edge_status(shm, idx, agv::EdgeStatus::BLOCKED);
+                    //同时封禁该边的反向边（如果存在）
+                    auto it = edge_pair.find(eid);
+                    uint16_t other_eid;
+                    if (it != edge_pair.end()&&it->second.get_other_path(eid,&other_eid)) {
+                        idx = find_edge_idx(snap,other_eid);
+                        if(idx>=0)agv::shm_set_edge_status(shm, idx, agv::EdgeStatus::BLOCKED);
+                    }
                 }
                 for (auto& ns : nodes) {
                     uint16_t nid = node_id_from_str(ns);
@@ -163,6 +170,13 @@ int main() {
                     int idx = find_edge_idx(snap, eid);
                     if (idx >= 0)
                         agv::shm_set_edge_status(shm, idx, agv::EdgeStatus::IDLE);
+                    //同时恢复该边的反向边（如果存在）
+                    auto it = edge_pair.find(eid);
+                    uint16_t other_eid;
+                    if (it != edge_pair.end()&&it->second.get_other_path(eid,&other_eid)) {
+                        idx = find_edge_idx(snap,other_eid);
+                        if(idx>=0)agv::shm_set_edge_status(shm, idx, agv::EdgeStatus::IDLE);
+                    }
                 }
                 for (auto& ns : nodes) {
                     uint16_t nid = node_id_from_str(ns);

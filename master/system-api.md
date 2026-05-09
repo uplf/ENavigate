@@ -636,7 +636,7 @@ const char* name() const;
 
 ## 模型存储层
 
-### seqlock + ProcMutex — 轻量读写同步与写者互斥
+### seqlock + ProcMutex 
 
 #### Seqlock — 顺序锁（读者/写者同步）
 

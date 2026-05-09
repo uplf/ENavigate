@@ -14,18 +14,27 @@
 
 
 const char* proc_name="model-mng";
+unordered_map edge_pair<uint16_t, bipath>;
+
+
 
 //初始状态 TODO
 void init_map(agv::ShmLayout* shm_ptr){
     shm_ptr->map.node_count_ = 3;
-    shm_ptr->map.edge_count_ = 2;
-
-    shm_ptr->map.edges_[0] = {0, 0, 1, 10, agv::EdgeStatus::IDLE};
-    shm_ptr->map.edges_[1] = {1, 1, 2, 15, agv::EdgeStatus::IDLE};
-
-    shm_ptr->map.nodes_[0] = agv::Node{0,10,20,agv::NodeStatus::IDLE,"A","d"};
-    shm_ptr->map.nodes_[1] = agv::Node{1, 30, 20, agv::NodeStatus::IDLE, "B", "2"};
-    shm_ptr->map.nodes_[2] = agv::Node{2, 50, 20, agv::NodeStatus::IDLE, "C", "3"};
+    shm_ptr->map.edge_count_ = 3*2;
+    vector<bipath_pair> edges{
+        bipath_pair::create(1, 2, 1, edge_count_/2, 10, agv::EdgeStatus::IDLE, "A-B"),
+        bipath_pair::create(2, 3, 2, edge_count_/2, 15, agv::EdgeStatus::IDLE, "B-C"),
+        bipath_pair::create(1, 3, 3, edge_count_/2, 15, agv::EdgeStatus::IDLE, "A-C"),
+    };
+    for(auto & e:edges){
+        shm_ptr->map.edges_[e.idA-1] = e.generate_edgeA();
+        shm_ptr->map.edges_[e.idB-1] = e.generate_edgeB();
+        edge_pair[e.idA]=e;
+    }
+    shm_ptr->map.nodes_[0] = agv::Node{1,10,20,agv::NodeStatus::IDLE,"A","d"};
+    shm_ptr->map.nodes_[1] = agv::Node{2, 30, 20, agv::NodeStatus::IDLE, "B", "2"};
+    shm_ptr->map.nodes_[2] = agv::Node{3, 50, 20, agv::NodeStatus::IDLE, "C", "3"};
 }
 void init_car(agv::ShmLayout* shm_ptr){
     shm_ptr->cars.car_count_ = 2;
@@ -33,7 +42,7 @@ void init_car(agv::ShmLayout* shm_ptr){
     shm_ptr->cars.cars_[0] = {
         .id              = 1,
         .status          = agv::CarStatus::IDLE,
-        .current_node_id = 0,
+        .current_node_id = 1,
         .current_task_id = 0,
         .target_node_id  = 0,
         .last_start_node_id=1,

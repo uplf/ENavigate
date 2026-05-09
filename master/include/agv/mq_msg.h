@@ -29,6 +29,7 @@ static constexpr int kProcNameMaxLen = 32;
 
 static constexpr char kMqTaskDispatch[] = "/mq_task_dispatch";
 static constexpr char kMqMqttPublish[]  = "/mq_mqtt_publish";
+static constexpr char kMqRouteExert[]   = "/mq_route_exert"; 
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 队列容量参数（mq_open 时使用）
@@ -42,6 +43,9 @@ static constexpr long kTaskDispatchMsgSize = 256;   // sizeof(TaskDispatchMsg) <
 static constexpr long kMqttPublishMaxMsg   = 32;
 static constexpr long kMqttPublishMsgSize  = 512;   // sizeof(MqttPublishMsg)  < 512
 
+/// /mq_route_exert
+static constexpr long kRouteExertMaxMsg   = 10;
+static constexpr long kRouteExertMsgSize  = 64;   // sizeof(RouteExertMsg)  < 64
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 消息优先级（数字越大优先级越高）
@@ -62,37 +66,40 @@ enum class TaskAction : uint8_t {
     kCancel  = 1,   // 取消任务
     kReplan  = 2,   // 重规划（拓扑变更触发，不改变目标）
 };
-
+enum class ImmeStra : uint8_t {
+    kNormal  = 0,  // 下一个路段完成后生效
+    kImme  = 1,    // 立即生效
+    kUturn  = 2,   // 立即掉头,且掉完头跨越节点
+    kUturnNoCross =3,     // 立即掉头,但掉完头不跨越节点
+};
 struct TaskDispatchMsg {
     TaskAction action;
 
     uint8_t  car_id;            ///< 小车 ID（0xFF = 广播/任意）
     uint8_t  target_node;       ///< 目标节点 ID（kCancel 时忽略）
-    uint8_t  immediate;         ///< 1 = 立即生效；0 = 等当前段完成后生效
-
-    //int64_t  timestamp_us;      ///< 发出时间（CLOCK_MONOTONIC，微秒）
-
-    //uint8_t  _pad[2];           ///< 对齐填充，保持结构体大小为 2 的幂次附近
+    ImmeStra  immediate;         ///< 1 = 立即生效；0 = 等当前段完成后生效
 
     /// 便捷构造
-    static TaskDispatchMsg assign(uint8_t car, uint8_t target, bool imm = true) {
+    static TaskDispatchMsg assign(uint8_t car, uint8_t target, ImmeStra imm = ImmeStra::kNormal) {
         TaskDispatchMsg m{};
         m.action       = TaskAction::kAssign;
         m.car_id       = car;
         m.target_node  = target;
-        m.immediate    = imm ? 1 : 0;
+        m.immediate    = imm;
         return m;
     }
-    static TaskDispatchMsg cancel(uint8_t car) {
+    static TaskDispatchMsg cancel(uint8_t car, ImmeStra imm = ImmeStra::kNormal) {
         TaskDispatchMsg m{};
         m.action  = TaskAction::kCancel;
         m.car_id  = car;
+        m.immediate = imm;
         return m;
     }
-    static TaskDispatchMsg replan(uint8_t car) {
+    static TaskDispatchMsg replan(uint8_t car, ImmeStra imm = ImmeStra::kNormal) {
         TaskDispatchMsg m{};
         m.action  = TaskAction::kReplan;
         m.car_id  = car;
+        m.immediate = imm;
         return m;
     }
 };
@@ -128,6 +135,7 @@ enum class OriCmd:uint8_t{
     kLeft=1,
     kRight=2,
     kARRIVED=3,
+    kUTurn=4,
 };
 std::string ori_cmd_to_str(OriCmd cmd) {
     switch (cmd) {
@@ -135,6 +143,7 @@ std::string ori_cmd_to_str(OriCmd cmd) {
         case OriCmd::kLeft:     return "LEFT";
         case OriCmd::kRight:    return "RIGHT";
         case OriCmd::kARRIVED: return "ARRIVED";
+        case OriCmd::kUTurn: return "UTURN";
         default:               return "UNKNOWN";
     }
 }
@@ -162,6 +171,7 @@ enum class ActionCmd:uint8_t{
     kProcess=1,
     kReboot=2,
     kUturn=3,
+    kUnknown=255,
 };
 std::string action_cmd_to_str(ActionCmd cmd) {
     switch (cmd) {
@@ -251,6 +261,21 @@ struct MqttPublishMsg {
         }
     }
 };
+
+struct RouteExertMsg {
+    uint8_t  car_id;
+    uint16_t  arrived_node;
+    uint16_t  last_node;
+    static RouteExertMsg apply(uint8_t car,uint16_t arrived_node=0xFFFF,uint16_t last_node=0xFFFF){
+        RouteExertMsg m{};
+        m.car_id=car;
+        m.arrived_node=arrived_node;
+        m.last_node=last_node;
+        return m;
+    }
+};
+
+
 
 static_assert(sizeof(MqttPublishMsg) <= kMqttPublishMsgSize,
               "MqttPublishMsg exceeds queue msg size");
