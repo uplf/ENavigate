@@ -135,10 +135,26 @@ namespace agv{
             return p;
         }
         Edge generate_edgeA() const {
-            return Edge{idA, from_node, to_node, weight, status, label};
+            Edge e;
+            e.id = idA;
+            e.from_node = from_node;
+            e.to_node = to_node;
+            e.weight = weight;
+            e.status = status;
+            strncpy(e.label, label, sizeof(e.label) - 1);
+            e.label[sizeof(e.label) - 1] = '\0';
+            return e;
         }
         Edge generate_edgeB() const {
-            return Edge{idB, to_node, from_node, weight, status, label};
+            Edge e;
+            e.id = idB;
+            e.from_node = from_node;
+            e.to_node = to_node;
+            e.weight = weight;
+            e.status = status;
+            strncpy(e.label, label, sizeof(e.label) - 1);
+            e.label[sizeof(e.label) - 1] = '\0';
+            return e;
         }
     };
     
