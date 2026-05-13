@@ -125,15 +125,16 @@ int main() {
                     if (idx >= 0)
                         agv::shm_set_edge_status(shm, idx, agv::EdgeStatus::BLOCKED);
                     //同时封禁该边的反向边（如果存在）
-                    if(eid<=0||eid>bipath_snap.bipath_count_){
-                        LOG_WARN(proc_name,"invalid edge id %u",eid);
+                    if(eid<=0||eid>bipath_snap.bipath_count_)
+		    {
+                        //LOG_WARN(proc_name,"invalid edge id %u",eid);
                         continue;//边 ID 无效或不是双向边
                     }
                     auto it=bipath_snap.paths_[eid-1];
                     uint16_t other_eid=it.get_other_path(eid,&other_eid);
                     idx = find_edge_idx(snap,other_eid);
                     if(idx==-1){
-                        LOG_WARN(proc_name,"other edge of %u not found",eid);
+                        //LOG_WARN(proc_name,"other edge of %u not found",eid);
                         continue;//反向边不存在
                     }
                     if(idx>=0)agv::shm_set_edge_status(shm, idx, agv::EdgeStatus::BLOCKED);
@@ -171,7 +172,7 @@ int main() {
             if (shm_ok) {
                 agv::ShmLayout* shm = shm_client.ptr();
                 agv::MapData snap   = agv::shm_read_map(shm);
-
+		agv::bipathData bipath_snap = agv::shm_read_bipaths(shm);
                 for (auto& es : edges) {
                     uint16_t eid = edge_id_from_str(es);
                     int idx = find_edge_idx(snap, eid);
@@ -180,14 +181,14 @@ int main() {
 
                     //同时封禁该边的反向边（如果存在）
                     if(eid<=0||eid>bipath_snap.bipath_count_){
-                        LOG_WARN(proc_name,"invalid edge id %u",eid);
+                        //LOG_WARN(proc_name,"invalid edge id %u",eid);
                         continue;//边 ID 无效或不是双向边
                     }
                     auto it=bipath_snap.paths_[eid-1];
                     uint16_t other_eid=it.get_other_path(eid,&other_eid);
                     idx = find_edge_idx(snap,other_eid);
                     if(idx==-1){
-                        LOG_WARN(proc_name,"other edge of %u not found",eid);
+                        //LOG_WARN(proc_name,"other edge of %u not found",eid);
                         continue;//反向边不存在
                     }
                     if(idx>=0)agv::shm_set_edge_status(shm, idx, agv::EdgeStatus::IDLE);

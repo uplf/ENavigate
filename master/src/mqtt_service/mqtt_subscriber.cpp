@@ -221,8 +221,10 @@ private:
             edge_id=map.adj_[from_node].edge_ids[i];
             if(map.edges_[edge_id-1].to_node==to_node){
                 agv::shm_set_edge_status(_shm.ptr(), edge_id-1, status, label);
-                for(auto j:edge_pair){
-                    if(j.second.get_other_path(edge_id,&edge_id2)!=-1){
+                auto pathdata=agv::shm_read_bipaths(_shm.ptr());
+                for(int i=0;i<pathdata.bipath_count_;++i){
+                    auto edge_pair=pathdata.paths_[i];
+                    if(edge_pair.get_other_path(edge_id,&edge_id2)!=-1){
                         agv::shm_set_edge_status(_shm.ptr(), edge_id2-1, status, label);
                         break;
                     }

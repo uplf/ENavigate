@@ -315,7 +315,7 @@ namespace agv {
 
 
     inline bipathData shm_read_bipaths(ShmLayout* shm) {
-        bipath_data snap;
+        bipathData snap;
         snap = shm->bipaths;//不需要读写保护，因为双向边数据由 owner 初始化后只读不改
         return snap;
     }

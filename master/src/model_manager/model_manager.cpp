@@ -4,7 +4,7 @@
 #include <atomic>
 #include <thread>
 #include <chrono>
-
+#include <vector>
 //请确保log_daemon正常运行
 #include "shm_manager.h"
 #include "mq_wrapper.h"
@@ -14,7 +14,6 @@
 
 
 const char* proc_name="model-mng";
-unordered_map edge_pair<uint16_t, bipath>;
 
 
 
@@ -23,10 +22,10 @@ void init_map(agv::ShmLayout* shm_ptr){
     shm_ptr->map.node_count_ = 3;
     shm_ptr->map.edge_count_ = 3*2;
     shm_ptr->bipaths.bipath_count_=0;
-    vector<bipath_pair> edges{
-        bipath_pair::create(1, 2, 1, edge_count_/2, 10, agv::EdgeStatus::IDLE, "A-B"),
-        bipath_pair::create(2, 3, 2, edge_count_/2, 15, agv::EdgeStatus::IDLE, "B-C"),
-        bipath_pair::create(1, 3, 3, edge_count_/2, 15, agv::EdgeStatus::IDLE, "A-C"),
+    std::vector<agv::bipath_pair> edges{
+        agv::bipath_pair::create(1, 2, 1, 3*2/2, 10, agv::EdgeStatus::IDLE, "A-B"),
+        agv::bipath_pair::create(2, 3, 2, 3*2/2, 15, agv::EdgeStatus::IDLE, "B-C"),
+        agv::bipath_pair::create(1, 3, 3, 3*2/2, 15, agv::EdgeStatus::IDLE, "A-C"),
     };
     for(auto & e:edges){
         shm_ptr->map.edges_[e.idA-1] = e.generate_edgeA();

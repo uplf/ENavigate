@@ -39,6 +39,7 @@ static void append(char* buf, size_t cap, size_t& pos, const char* fmt, ...) {
 
 static void build_status_json(const agv::MapData& map,
                                const agv::CarData& cars,
+                               const agv::bipathData& bipaths,
                                char* out, size_t cap) {
     size_t pos = 0;
 
@@ -141,7 +142,7 @@ static void build_status_json(const agv::MapData& map,
     append(out, cap, pos, "\"edges\":{");
     for (uint16_t i = 0; i < map.edge_count_; ++i) {
         const auto& e = map.edges_[i];
-        if(e.id>shm_ptr->bipaths.bipath_count_)continue;//双向边只显示一次，避免重复显示A-B和B-A两条边
+        if(e.id>bipaths.bipath_count_)continue;//双向边只显示一次，避免重复显示A-B和B-A两条边
         if (i > 0) append(out, cap, pos, ",");
         append(out, cap, pos,
                "\"L%d\":{\"status\":\"%s\",\"weight\":\"%d\",\"from\":\"N%u\",\"to\":\"N%u\"}",
@@ -196,8 +197,10 @@ int main() {
         // 读 SHM 快照（Seqlock 保护）
         agv::MapData map_snap = agv::shm_read_map(shm_client.ptr());
         agv::CarData car_snap = agv::shm_read_cars(shm_client.ptr());
+        agv::bipathData bi_snap = agv::shm_read_bipaths(shm_client.ptr());
 
-        build_status_json(map_snap, car_snap, json_buf, sizeof(json_buf));
+        build_status_json(map_snap, car_snap,bi_snap, json_buf, sizeof(json_buf));
+
         reply_json(200, json_buf);
     }
     return 0;
