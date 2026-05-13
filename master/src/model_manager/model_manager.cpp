@@ -33,7 +33,23 @@ void init_map(agv::ShmLayout* shm_ptr){
         shm_ptr->map.edges_[e.idB-1] = e.generate_edgeB();
         shm_ptr->bipaths.paths_[e.idA-1]=e;//这里会使用父类吗？？
         shm_ptr->bipaths.bipath_count_++;
-        //邻接表还没有初始化，后续再完善
+    }
+
+    // 初始化邻接表：遍历所有边，将边索引加入两端节点的邻接表
+    for (uint16_t i = 0; i < shm_ptr->map.edge_count_; i++) {
+        const auto& e = shm_ptr->map.edges_[i];
+        uint16_t from_idx = e.from_node - 1;  // node id → 0-based 索引
+        uint16_t to_idx   = e.to_node - 1;
+
+        auto& adj_from = shm_ptr->map.adj_[from_idx];
+        if (adj_from.count_ < AGV_MAX_NEIGHBORS) {
+            adj_from.edge_ids_[adj_from.count_++] = i;
+        }
+
+        auto& adj_to = shm_ptr->map.adj_[to_idx];
+        if (adj_to.count_ < AGV_MAX_NEIGHBORS) {
+            adj_to.edge_ids_[adj_to.count_++] = i;
+        }
     }
     shm_ptr->map.nodes_[0] = agv::Node{1,10,20,agv::NodeStatus::IDLE,"A","d"};
     shm_ptr->map.nodes_[1] = agv::Node{2, 30, 20, agv::NodeStatus::IDLE, "B", "2"};
