@@ -78,14 +78,14 @@ namespace agv{
             if(msg.last_node==0xFFFF)msg.last_node=current_car.last_node_id;
             if(msg.arrived_node==0xFFFF)msg.arrived_node=current_car.current_node_id;
             
-            uint16_t next_path_id=current_car.path_len-1;
-            for(;;next_path_id--){
-                if(next_path_id<0){
+            int next_path_idx=current_car.path_len-1;
+            for(;;next_path_idx--){
+                if(next_path_idx<0){
                     //没有找到相关路径，出错。
                     LOG_ERROR(proc_name,"fail to find the next path for car%u",msg.car_id);
                     return false;
                 }
-                if(map_data.edges_[current_car.path_stack[next_path_id]].from_node==msg.arrived_node){
+                if(map_data.edges_[current_car.path_stack[next_path_idx]].from_node==msg.arrived_node){
                     break;
                 }
             }
@@ -111,12 +111,17 @@ namespace agv{
         }
         private:
         //(x1,y1)为起点坐标，(x2,y2)为当前点坐标，(x3,y3)为目标点坐标
-        agv::ActionCmd generate_turn(uint16_t x1,uint16_t y1,uint16_t x2,uint16_t y2,uint16_t x3,uint16_t y3){
+        agv::OriCmd generate_turn(uint16_t x1,uint16_t y1,uint16_t x2,uint16_t y2,uint16_t x3,uint16_t y3){
             int cal_a=(int(x2)-int(x1))*(int(y3)-int(y1));
             int cal_b=(int(y2)-int(y1))*(int(x3)-int(x1));
-            if(cal_a==cal_b)return agv::ActionCmd::kUturn;
-            else if(cal_a>cal_b)return agv::ActionCmd::kLeft;
-            else return agv::ActionCmd::kRight;
+            if(cal_a==cal_b){
+                //区分直行和掉头
+                int cal_c=(int(x3)-int(x2))*(int(x2)-int(x1))+(int(y3)-int(y2))*(int(y2)-int(y1));
+                if(cal_c>0)return agv::OriCmd::kStraight;
+                else return agv::OriCmd::kUTurn;
+            }
+            else if(cal_a>cal_b)return agv::OriCmd::kLeft;
+            else return agv::OriCmd::kRight;
         }
         agv::ShmClient _shm;
         agv::MqSender<MqttPublishMsg> _mq_send;//发送mqtt消息，用于即时指令

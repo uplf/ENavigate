@@ -42,7 +42,7 @@
 #define AGC_TMP_OBSTACLE "apple", "banana", "orange", nullptr
 
 //确定小车编号和shm编号的对应关系并更新到全部文件中才能移除并编译
-not_allow_to_compile_if_not_removed;
+//not_allow_to_compile_if_not_removed;
 
 
 //#define DO_NOT_USE _Static_assert(0, "This macro is not allowed")
