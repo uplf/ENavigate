@@ -41,13 +41,13 @@ void init_map(agv::ShmLayout* shm_ptr){
         uint16_t to_idx   = e.to_node - 1;
 
         auto& adj_from = shm_ptr->map.adj_[from_idx];
-        if (adj_from.count_ < AGV_MAX_NEIGHBORS) {
-            adj_from.edge_ids_[adj_from.count_++] = i;
+        if (adj_from.count < AGV_MAX_NEIGHBORS) {
+            adj_from.edge_ids[adj_from.count++] = i;
         }
 
         auto& adj_to = shm_ptr->map.adj_[to_idx];
-        if (adj_to.count_ < AGV_MAX_NEIGHBORS) {
-            adj_to.edge_ids_[adj_to.count_++] = i;
+        if (adj_to.count < AGV_MAX_NEIGHBORS) {
+            adj_to.edge_ids[adj_to.count++] = i;
         }
     }
     shm_ptr->map.nodes_[0] = agv::Node{1,10,20,agv::NodeStatus::IDLE,"A","d"};

@@ -54,14 +54,14 @@ void test_struct_sizes() {
 void test_task_dispatch_msg() {
     fprintf(stderr, "\n[test_task_dispatch_msg]\n");
 
-    auto m1 = agv::TaskDispatchMsg::assign(3, 7, true);
+    auto m1 = agv::TaskDispatchMsg::assign(3, 7, agv::ImmeStra::kImme);
     CHECK(m1.action      == agv::TaskAction::kAssign);
     CHECK(m1.car_id      == 3);
     CHECK(m1.target_node == 7);
-    CHECK(m1.immediate   == 1);
+    CHECK(m1.immediate   == agv::ImmeStra::kImme);
 
-    auto m2 = agv::TaskDispatchMsg::assign(1, 5, false);
-    CHECK(m2.immediate   == 0);
+    auto m2 = agv::TaskDispatchMsg::assign(1, 5, agv::ImmeStra::kNormal);
+    CHECK(m2.immediate   == agv::ImmeStra::kNormal);
 
     auto m3 = agv::TaskDispatchMsg::cancel(2);
     CHECK(m3.action  == agv::TaskAction::kCancel);

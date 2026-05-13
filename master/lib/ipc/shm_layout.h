@@ -135,7 +135,7 @@ namespace agv{
             return p;
         }
         Edge generate_edgeA() const {
-            edge e;
+            Edge e;
             e.id = idA;
             e.from_node = from_node;
             e.to_node = to_node;
@@ -146,7 +146,7 @@ namespace agv{
             return e;
         }
         Edge generate_edgeB() const {
-            edge e;
+            Edge e;
             e.id = idB;
             e.from_node = from_node;
             e.to_node = to_node;

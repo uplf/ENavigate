@@ -179,12 +179,12 @@ int main() {
 
     // 发 task 消息
     {
-        auto m = agv::TaskDispatchMsg::assign(1, 5, true);
+        auto m = agv::TaskDispatchMsg::assign(1, 5, agv::ImmeStra::kImme);
         tx_task.send(m, agv::kPrioNormal);
         fprintf(stderr, "[sender] sent TaskDispatch: assign  car=1 -> node=5\n");
     }
     {
-        auto m = agv::TaskDispatchMsg::assign(2, 8, true);
+        auto m = agv::TaskDispatchMsg::assign(2, 8, agv::ImmeStra::kImme);
         tx_task.send(m, agv::kPrioNormal);
         fprintf(stderr, "[sender] sent TaskDispatch: assign  car=2 -> node=8\n");
     }

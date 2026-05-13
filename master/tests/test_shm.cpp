@@ -273,7 +273,7 @@ void test_car_read_write() {
     CHECK(c.path_stack[0]   == 1);
 
     // 到站：只更新 status + current_node
-    agv::shm_set_car_status(shm, 0, agv::CarStatus::IDLE, 2);
+    agv::shm_set_car_status(shm, 0, agv::CarStatus::IDLE);
     agv::Car c2 = agv::shm_read_car(shm, 0);
     CHECK(c2.status          == agv::CarStatus::IDLE);
     CHECK(c2.current_node_id == 2);
@@ -302,7 +302,7 @@ void test_independent_locks() {
     // 写 car 锁时，map 锁的 seq 不变
     uint32_t map_seq_before = shm->map_lock.read_begin();
 
-    agv::shm_set_car_status(shm, 0, agv::CarStatus::MOVING, 1);
+    agv::shm_set_car_status(shm, 0, agv::CarStatus::MOVING);
 
     bool map_unaffected = shm->map_lock.read_end(map_seq_before);
     CHECK(map_unaffected);  // 写 car 不影响 map_lock 的 seq
