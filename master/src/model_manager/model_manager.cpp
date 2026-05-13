@@ -22,6 +22,7 @@ unordered_map edge_pair<uint16_t, bipath>;
 void init_map(agv::ShmLayout* shm_ptr){
     shm_ptr->map.node_count_ = 3;
     shm_ptr->map.edge_count_ = 3*2;
+    shm_ptr->bipaths.bipath_count_=0;
     vector<bipath_pair> edges{
         bipath_pair::create(1, 2, 1, edge_count_/2, 10, agv::EdgeStatus::IDLE, "A-B"),
         bipath_pair::create(2, 3, 2, edge_count_/2, 15, agv::EdgeStatus::IDLE, "B-C"),
@@ -30,7 +31,9 @@ void init_map(agv::ShmLayout* shm_ptr){
     for(auto & e:edges){
         shm_ptr->map.edges_[e.idA-1] = e.generate_edgeA();
         shm_ptr->map.edges_[e.idB-1] = e.generate_edgeB();
-        edge_pair[e.idA]=e;
+        shm_ptr->bipaths.paths_[e.idA-1]=e;//这里会使用父类吗？？
+        shm_ptr->bipaths.bipath_count_++;
+        //邻接表还没有初始化，后续再完善
     }
     shm_ptr->map.nodes_[0] = agv::Node{1,10,20,agv::NodeStatus::IDLE,"A","d"};
     shm_ptr->map.nodes_[1] = agv::Node{2, 30, 20, agv::NodeStatus::IDLE, "B", "2"};

@@ -121,6 +121,7 @@ namespace agv {
             new (&shm_->car_lock) Seqlock();
             shm_->car_write_mutex.init();      // PTHREAD_PROCESS_SHARED + ROBUST
             new (&shm_->cars)     CarData{};
+            new (&shm_->bipaths)   bipathData{};
 
             // 写 header（最后写，initialized 标志位最后置 1）
             shm_->header.magic       = kShmMagic;
@@ -130,10 +131,11 @@ namespace agv {
 
             fprintf(stderr,
                 "[shm_owner] created %s  size=%zu  "
-                "map_offset=%zu  car_offset=%zu\n",
+                "map_offset=%zu  car_offset=%zu  bipath_offset=%zu\n",
                 kShmName, size_,
                 offsetof(ShmLayout, map),
-                offsetof(ShmLayout, cars));
+                offsetof(ShmLayout, cars),
+                offsetof(ShmLayout, bipaths));
         }
 
         ~ShmOwner() {
@@ -312,57 +314,12 @@ namespace agv {
     }
 
 
-    //双向边相关操作
-    struct bipath{
-        uint16_t idA;
-        uint16_t idB;
-        int main_path(uint16_t path_id) const {
-            if(path_id == idA) return 1;
-            if(path_id == idB) return 0;
-            return -1;
-        }
-        int get_other_path(uint16_t path_id,uint16_t* other_path_id) const {
-            if(path_id == idA) {
-                *other_path_id = idB;
-                return 1;
-            }
-            if(path_id == idB) {
-                *other_path_id = idA;
-                return 0;
-            }
-            *other_path_id=0xFFFF;
-            return -1;
-        }
+    inline bipathData shm_read_bipaths(ShmLayout* shm) {
+        bipath_data snap;
+        snap = shm->bipaths;//不需要读写保护，因为双向边数据由 owner 初始化后只读不改
+        return snap;
     }
 
 
-    struct bipath_pair:public bipath{
-        uint16_t from_node;
-        uint16_t to_node;
-        uint16_t weight;
-        agv::EdgeStatus status;
-        char label[AGC_MAX_LABEL];
-
-        static bipath_pair create(uint16_t from, uint16_t to, uint16_t id_a, uint16_t offset_, uint16_t w, agv::EdgeStatus s,const char* l)
-        {        
-            bipath_pair p;
-            p.idA = id_a;
-            p.idB = id_a + offset_;
-            p.from_node = from;
-            p.to_node = to;
-            p.weight = w;
-            p.status = s;
-            strncpy(p.label, l, sizeof(p.label) - 1);
-            p.label[sizeof(p.label) - 1] = '\0';
-            return p;
-        }
-        Edge generate_edgeA() const {
-            return Edge{idA, from_node, to_node, weight, status, label};
-        }
-        Edge generate_edgeB() const {
-            return Edge{idB, to_node, from_node, weight, status, label};
-        }
-    }
-    extern unordered_map edge_pair<uint16_t, bipath>;
 
 } // namespace agv

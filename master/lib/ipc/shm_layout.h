@@ -86,6 +86,62 @@ namespace agv{
     //DO_NOT_USE;
 
 
+        //双向边相关操作
+    struct bipath{
+        uint16_t idA;
+        uint16_t idB;
+        int main_path(uint16_t path_id) const {
+            if(path_id == idA) return 1;
+            if(path_id == idB) return 0;
+            return -1;
+        }
+        int get_other_path(uint16_t path_id,uint16_t* other_path_id) const {
+            if(path_id == idA) {
+                *other_path_id = idB;
+                return 1;
+            }
+            if(path_id == idB) {
+                *other_path_id = idA;
+                return 0;
+            }
+            *other_path_id=0xFFFF;
+            return -1;
+        }
+    };
+
+    struct bipathData{
+        bipath paths_[AGV_MAX_EDGES/2];
+        uint16_t bipath_count_;
+    };
+
+    struct bipath_pair:public bipath{
+        uint16_t from_node;
+        uint16_t to_node;
+        uint16_t weight;
+        agv::EdgeStatus status;
+        char label[AGC_MAX_LABEL];
+
+        static bipath_pair create(uint16_t from, uint16_t to, uint16_t id_a, uint16_t offset_, uint16_t w, agv::EdgeStatus s,const char* l)
+        {        
+            bipath_pair p;
+            p.idA = id_a;
+            p.idB = id_a + offset_;
+            p.from_node = from;
+            p.to_node = to;
+            p.weight = w;
+            p.status = s;
+            strncpy(p.label, l, sizeof(p.label) - 1);
+            p.label[sizeof(p.label) - 1] = '\0';
+            return p;
+        }
+        Edge generate_edgeA() const {
+            return Edge{idA, from_node, to_node, weight, status, label};
+        }
+        Edge generate_edgeB() const {
+            return Edge{idB, to_node, from_node, weight, status, label};
+        }
+    };
+    
     struct ShmHeader {
         uint32_t magic;         ///< == kShmMagic，用于 attach 时校验
         uint32_t version;       ///< 版本号，进程不匹配时拒绝 attach
@@ -106,6 +162,7 @@ namespace agv{
     *   [Seqlock car_lock  ]  64 B   CarData 的 seq 计数器（读者用）
     *   [ProcMutex         ]  64 B   CarData 的写者互斥锁（写者用）
     *   [CarData           ]  ~1 KB  小车状态
+    *  [bipathData         ]  ~1 KB  双向边数据
     *
     * Seqlock 和 ProcMutex 分开排列而不是内嵌在数据结构里，
     * 是为了让它们不被写操作的 memcpy 覆盖。
@@ -122,5 +179,7 @@ namespace agv{
         Seqlock     car_lock;            // 紧随 map 之后  — CarData 的 seq 计数器
         ProcMutex   car_write_mutex;     //                — CarData 的写者互斥锁（新增）
         CarData     cars;                // 紧随 car_write_mutex
+
+        bipathData bipaths;             // 紧随 cars 之后  — 双向边数据
     };
 }
