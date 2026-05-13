@@ -6,6 +6,7 @@
 using json = nlohmann::json;
 #include "shm_manager.h"
 #include "mq_wrapper.h"
+#include "logger.h"
 #include <fcgi_stdio.h>
 #include "fcgi_utils.h"
 using namespace agv::http;
@@ -100,20 +101,24 @@ int main() {
                     uint16_t eid = edge_id_from_str(es);
                     int idx = find_edge_idx(snap, eid);
                     if (idx >= 0)
+
                         agv::shm_set_edge_status(shm, idx, agv::EdgeStatus::BLOCKED);
                     //同时封禁该边的反向边（如果存在）
                     if(eid<=0||eid>bipath_snap.bipath_count_)
-		    {
-                        //LOG_WARN(proc_name,"invalid edge id %u",eid);
+		            {
+                        LOG_WARN(proc_name,"invalid edge id %u",eid);
                         continue;//边 ID 无效或不是双向边
                     }
                     auto it=bipath_snap.paths_[eid-1];
-                    uint16_t other_eid=it.get_other_path(eid,&other_eid);
+                    uint16_t other_eid;
+                    it.get_other_path(eid, &other_eid);
                     idx = find_edge_idx(snap,other_eid);
+                    LOG_INFO(proc_name,"finding inv edge:%d",idx);
                     if(idx==-1){
-                        //LOG_WARN(proc_name,"other edge of %u not found",eid);
+                        LOG_WARN(proc_name,"other edge of %u not found",eid);
                         continue;//反向边不存在
                     }
+                    LOG_INFO(proc_name,"blocked the inv edge of %d",idx);
                     if(idx>=0)agv::shm_set_edge_status(shm, idx, agv::EdgeStatus::BLOCKED);
                 }
                 for (auto& ns : nodes) {
@@ -162,7 +167,8 @@ int main() {
                         continue;//边 ID 无效或不是双向边
                     }
                     auto it=bipath_snap.paths_[eid-1];
-                    uint16_t other_eid=it.get_other_path(eid,&other_eid);
+                    uint16_t other_eid;
+                    it.get_other_path(eid, &other_eid);
                     idx = find_edge_idx(snap,other_eid);
                     if(idx==-1){
                         //LOG_WARN(proc_name,"other edge of %u not found",eid);

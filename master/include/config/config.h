@@ -8,7 +8,7 @@
 
 //****调试区 */
 //是否打印注释，若不直接打印，请注释
-#define _AGV_PRINT_DEBUG
+//#define _AGV_PRINT_DEBUG
 //MQTT全部测试回显
 //#define _AGV_PRINT_PRINT
 

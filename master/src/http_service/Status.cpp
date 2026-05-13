@@ -6,8 +6,10 @@ using json = nlohmann::json;
 #include "shm_manager.h"
 #include <fcgi_stdio.h>
 #include "fcgi_utils.h"
+#include "logger.h"
 using namespace agv::http;
 
+const char* proc_name="HTTP-status";
 // ── JSON 构建辅助 ─────────────────────────────────────────────────────────────
 
 static void append(char* buf, size_t cap, size_t& pos, const char* fmt, ...) {
@@ -151,12 +153,14 @@ static void build_status_json(const agv::MapData& map,
 
 int main() {
     // attach SHM（进程启动时一次，之后复用）
+    LOG_INFO(proc_name,"begin");
     agv::ShmClient shm_client;
     bool shm_ok = false;
     try {
         shm_client.attach(1000);  // 等最多 1s
         shm_ok = true;
     } catch (const std::exception& e) {
+        
         dprintf(2, "[status] SHM not available: %s\n", e.what());
     }
 

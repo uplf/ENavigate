@@ -19,8 +19,8 @@ const char* proc_name="model-mng";
 
 //初始状态 TODO
 void init_map(agv::ShmLayout* shm_ptr){
-    shm_ptr->map.node_count_ = 3;
-    shm_ptr->map.edge_count_ = 3*2;
+    shm_ptr->map.node_count_ = 15;
+    shm_ptr->map.edge_count_ = 18*2;
     shm_ptr->bipaths.bipath_count_=0;
     std::vector<agv::bipath_pair> edges{
         agv::bipath_pair::create(1, 4,  1, 18, 10, agv::EdgeStatus::IDLE, "L1"),
@@ -53,6 +53,8 @@ void init_map(agv::ShmLayout* shm_ptr){
         shm_ptr->map.edges_[e.idB-1] = e.generate_edgeB();
         shm_ptr->bipaths.paths_[e.idA-1]=e;//这里会使用父类吗？？
         shm_ptr->bipaths.bipath_count_++;
+        LOG_INFO(proc_name,"write edge in idx:%d-id:%d and its bipath idx:%d-id:%d"
+            ,e.idA-1,shm_ptr->map.edges_[e.idA-1].id,e.idB-1,shm_ptr->map.edges_[e.idB-1].id);
     }
 
     // 初始化邻接表：遍历所有边，将边索引加入两端节点的邻接表
@@ -98,9 +100,9 @@ void init_car(agv::ShmLayout* shm_ptr){
         .id              = 1,
         .status          = agv::CarStatus::IDLE,
         .current_node_id = 4,
-        .last_node_id    = 1,
         .current_task_id = 0,
         .target_node_id  = 0,
+	.last_node_id	 = 1,
         .last_start_node_id=1,
         .path_len        = 0,
     };
@@ -108,9 +110,9 @@ void init_car(agv::ShmLayout* shm_ptr){
         .id              = 2,
         .status          = agv::CarStatus::IDLE,
         .current_node_id = 5,
-        .last_node_id    = 2,
         .current_task_id = 0,
         .target_node_id  = 0,
+	.last_node_id	 = 2,
         .last_start_node_id=2,
         .path_len        = 0,
     };

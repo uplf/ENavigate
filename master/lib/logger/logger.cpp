@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <cstring>
 #include <cstdarg>
+#include <unistd.h>
 #include "config/config.h"
 #include "logger.h"
 
@@ -14,7 +15,7 @@ mqd_t agv_log_init(){
 
     mqd_t mq = mq_open(MQ_LOG_NAME, O_CREAT | O_WRONLY, 0644, &attr);
     if (mq == (mqd_t)-1) {
-        perror("Failed to open message queue");
+        write(2, "[logger] Failed to open message queue\n", 39);
         return (mqd_t)-1;
     }
     return mq;
@@ -22,7 +23,7 @@ mqd_t agv_log_init(){
 
 static void _agv_log(mqd_t mq, LogLevel level, const char* source, const char* text){
     if (mq == (mqd_t)-1) {
-        fprintf(stderr, "Invalid message queue descriptor\n");
+        write(2, "[logger] Invalid message queue descriptor\n", 43);
         return;
     }
     LogMsg msg;
@@ -32,11 +33,11 @@ static void _agv_log(mqd_t mq, LogLevel level, const char* source, const char* t
     strncpy(msg.text, text, sizeof(msg.text) - 1);
     msg.text[sizeof(msg.text) - 1] = '\0';
     #ifdef _AGV_PRINT_DEBUG
-        fprintf(stdout, "[%s](%s) %s\n", level_str(msg.level),msg.source, msg.text);
+        dprintf(1, "[%s](%s) %s\n", level_str(msg.level),msg.source, msg.text);
     #endif
 
     if (mq_send(mq, (const char*)&msg, sizeof(msg), 0) == -1) {
-        perror("Failed to send log message");
+        write(2, "[logger] Failed to send log message\n", 37);
     }
 }
 
