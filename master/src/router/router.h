@@ -47,9 +47,7 @@ namespace agv{
             LOG_INFO(proc_name,"do_cleanup");
         }
 
-        bool handle_task(const RouteExertMsg& msg){
-            LOG_INFO(proc_name,"handle_task car_id=%u target_node=%u imm=%u",
-                    msg.car_id, msg.target_node, msg.immediate);
+        bool handle_task(RouteExertMsg& msg){
             auto map_data=shm_read_map(_shm.ptr());
             auto car_data=shm_read_cars(_shm.ptr());
             
@@ -70,13 +68,13 @@ namespace agv{
                 current_car.path_len=0;
                 current_car.last_start_node_id=current_car.current_node_id;
                 current_car.current_task_id=0;
-                shm_update_car(_shm,msg.car_id-1,current_car);
+                shm_update_car(_shm.ptr(),msg.car_id-1,current_car);
                 _mq_send.send(MqttPublishMsg::make_ori(msg.car_id,agv::OriCmd::kARRIVED));
                 return true;
             }
             //默认情况下，arrived_node和last_node为0xFFFF，表示由router根据当前状态推断
-            if(msg.last_node==0xFFFF)msg.last_node=current_car.last_node_id;
-            if(msg.arrived_node==0xFFFF)msg.arrived_node=current_car.current_node_id;
+            if(msg.last_node==0xFFFF) msg.last_node=current_car.last_node_id;
+            if(msg.arrived_node==0xFFFF) msg.arrived_node=current_car.current_node_id;
             
             int next_path_idx=current_car.path_len-1;
             for(;;next_path_idx--){
@@ -89,25 +87,23 @@ namespace agv{
                     break;
                 }
             }
-            #ifndef _AGV_USE_ANGLE_MODE
-                generate_turn;
+
+            MqttPublishMsg mqtt_msg;
+#ifndef _AGV_USE_ANGLE_MODE
+            {
                 auto turn_cmd=generate_turn(map_data.nodes_[current_car.last_node_id].x,map_data.nodes_[current_car.last_node_id].y,
                     map_data.nodes_[current_car.current_node_id].x,map_data.nodes_[current_car.current_node_id].y,
                     map_data.nodes_[msg.arrived_node].x,map_data.nodes_[msg.arrived_node].y);
-                if(turn_cmd==agv::ActionCmd::kUnknown){
-                    LOG_ERROR(proc_name,"unknown problem, id<1>");
-                    return false;
-                }
-                auto mqtt_msg=MqttPublishMsg::make_ori(msg.car_id,turn_cmd);
-            #else
-                MqttPublishMsg mqtt_msg;
-                static_assert(0,"function developing")
-            #endif
-                _mq_send.send(mqtt_msg,kPrioHigh);
-                current_car.last_node_id=current_car.current_node_id;
-                current_car.current_node_id=map_data.edges_[current_car.path_stack[next_path_id]].to_node;
-                shm_update_car(_shm.ptr(),msg.car_id-1,current_car);
-            LOG_INFO(proc_name,"find_path result size=%zu",path.size());
+                mqtt_msg = MqttPublishMsg::make_ori(msg.car_id,turn_cmd);
+            }
+#else
+            static_assert(false,"function developing");
+#endif
+            _mq_send.send(mqtt_msg,kPrioHigh);
+            current_car.last_node_id=current_car.current_node_id;
+            current_car.current_node_id=map_data.edges_[current_car.path_stack[next_path_idx]].to_node;
+            shm_update_car(_shm.ptr(),msg.car_id-1,current_car);
+            return true;
         }
         private:
         //(x1,y1)为起点坐标，(x2,y2)为当前点坐标，(x3,y3)为目标点坐标

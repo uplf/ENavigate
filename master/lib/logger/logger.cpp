@@ -32,7 +32,7 @@ static void _agv_log(mqd_t mq, LogLevel level, const char* source, const char* t
     strncpy(msg.text, text, sizeof(msg.text) - 1);
     msg.text[sizeof(msg.text) - 1] = '\0';
     #ifdef _AGV_PRINT_DEBUG
-        fprintf(stderr, "[%s|%s] %s\n", level_str(msg.level),msg.source, msg.text);
+        fprintf(stdout, "[%s](%s) %s\n", level_str(msg.level),msg.source, msg.text);
     #endif
 
     if (mq_send(mq, (const char*)&msg, sizeof(msg), 0) == -1) {

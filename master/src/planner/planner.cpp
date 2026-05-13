@@ -20,7 +20,7 @@ int main(){
     }
     agv::MqReceiver<agv::TaskDispatchMsg> mq;
     try {
-        mq.init(kMqTaskDispatch);
+        mq.init(agv::kMqTaskDispatch);
     } catch (const std::exception& e) {
         LOG_ERROR(proc_name,"fail to create mq:%s",e.what());
         return 1;

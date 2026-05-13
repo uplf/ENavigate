@@ -76,20 +76,20 @@ namespace agv{
                 auto last_node_id=current_car.last_node_id;
                 auto current_node_id=current_car.current_node_id;
                 uint16_t rev_node=0xFFFF;
-                for(int i=0;i<map_data.adj_[last_node_id].count_;++i){
+                for(int i=0;i<map_data.adj_[last_node_id].count;++i){
                     //遍历其他连接的路径
-                    auto edge_id=map_data.adj_[last_node_id].edge_ids_[i];
+                    auto edge_id=map_data.adj_[last_node_id].edge_ids[i];
                     if(edge_id>=map_data.edge_count_)continue;
                     auto edge=map_data.edges_[edge_id];
-                    auto node_s=map_data.nodes_[edge.to_node_];
+                    auto node_s=map_data.nodes_[edge.to_node];
                     //确认对应的点不是当前点，并且线路没封
-                    if(node_s.id==current_node_id||e
-                        edge.status_==agv::EdgeStatus::BLOCKED||
-                        edge.status_!=agv::EdgeStatus::IDLE)continue;
+                    if(node_s.id==current_node_id||
+                        edge.status==agv::EdgeStatus::BLOCKED||
+                        edge.status!=agv::EdgeStatus::IDLE)continue;
                     //判断是否为反向点
                     if(jud_rev(node_s.x,node_s.y,map_data.nodes_[last_node_id].x,map_data.nodes_[last_node_id].y,
                         map_data.nodes_[last_node_id].x,map_data.nodes_[last_node_id].y)){
-                        rev_node=node_s;
+                        rev_node=node_s.id;
                         break;
                     }
                 }
@@ -108,7 +108,7 @@ namespace agv{
                         return false;
                     case agv::TaskAction::kCancel:
                         LOG_ERROR(proc_name,"failed to cancel, the car%u will remain at node",msg.car_id);
-                        _mq_send(MqttPublishMsg::make_action(msg.car_id, ActionCmd::kPause),kPrioHigh);
+                        _mq_send.send(MqttPublishMsg::make_action(msg.car_id, ActionCmd::kPause),kPrioHigh);
                         //TODO: 更新线路状态
                         return false;
                     case agv::TaskAction::kReplan:
@@ -135,19 +135,20 @@ namespace agv{
             //根据immediate即时发布对应信息
             switch(msg.immediate){
                 case agv::ImmeStra::kUturn:{
-                    _mq_send(MqttPublishMsg::make_action(msg.car_id, ActionCmd::kUturn),kPrioHigh);
+                    _mq_send.send(MqttPublishMsg::make_action(msg.car_id, ActionCmd::kUturn),kPrioHigh);
                     break;
                 }
                 case agv::ImmeStra::kUturnNoCross:{
-                    _mq_send(MqttPublishMsg::make_action(msg.car_id, ActionCmd::kUturn),kPrioHigh);
+                    _mq_send.send(MqttPublishMsg::make_action(msg.car_id, ActionCmd::kUturn),kPrioHigh);
                     break;
                 }
                 case agv::ImmeStra::kImme:{
-                    _mq_send(MqttPublishMsg::make_action(msg.car_id, ActionCmd::kProcess),kPrioHigh);
+                    _mq_send.send(MqttPublishMsg::make_action(msg.car_id, ActionCmd::kProcess),kPrioHigh);
                     break;
                 }
             }
             LOG_INFO(proc_name,"find_path result size=%zu",path.size());
+	    return true;
         }
         private:
         bool jud_rev(uint16_t x1,uint16_t y1,uint16_t x2,uint16_t y2,uint16_t x3,uint16_t y3){

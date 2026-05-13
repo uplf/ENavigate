@@ -18,9 +18,9 @@ int main(){
         return 1;
     }
 
-    agv::MqReceiver<agv::TaskDispatchMsg> mq;
+    agv::MqReceiver<agv::RouteExertMsg> mq;
     try {
-        mq.init(kMqRouteExert);
+        mq.init(agv::kMqRouteExert);
     } catch (const std::exception& e) {
         LOG_ERROR(proc_name,"fail to create mq:%s",e.what());
         return 1;
@@ -67,6 +67,8 @@ int main(){
             agv::RouteExertMsg msg_recv={};
             unsigned proi;
             mq.receive(msg_recv,proi);
+            LOG_INFO(proc_name,"recieved RouteExertMsg car_id=%u arrived=%u last=%u",
+                msg_recv.car_id, msg_recv.arrived_node, msg_recv.last_node);
             router_instance.handle_task(msg_recv);
             continue;
         }     
