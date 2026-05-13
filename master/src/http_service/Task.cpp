@@ -1,27 +1,3 @@
-/**
- * task.cpp — POST /api/assign  和  POST /api/cancel
- *
- * 两个接口逻辑相似，合在一个进程里，通过 REQUEST_URI 区分。
- *
- * assign：解析 {car, target} → 向 mq_task_dispatch 发 kAssign 消息
- * cancel：解析 {car}        → 向 mq_task_dispatch 发 kCancel 消息
- *
- * 编译：
- *   g++ -std=c++17 \
- *       -I../../ -I../../lib \
- *       -o task_api task.cpp \
- *       -lfcgi -lrt -lpthread
- *
- * 启动：
- *   spawn-fcgi -s /run/agv/task.sock -n ./task_api
- *
- * Nginx 配置（两个 location 指向同一个 socket）：
- *   location /api/assign { fastcgi_pass unix:/run/agv/task.sock; include fastcgi_params; }
- *   location /api/cancel { fastcgi_pass unix:/run/agv/task.sock; include fastcgi_params; }
- */
-
-
-
 #include <cstdio>
 #include <cstring>
 #include <string>

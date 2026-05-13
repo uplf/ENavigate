@@ -1,20 +1,3 @@
-/**
- * status.cpp — GET /api/status
- *
- * 读取 SHM 中的 MapData 和 CarData，序列化为 API 文档定义的 JSON 格式。
- *
- * 编译：
- *   g++ -std=c++17 \
- *       -I../../ -I../../lib \
- *       -o status status.cpp \
- *       -lfcgi -lrt -lpthread
- *
- * 启动（spawn-fcgi 绑定到 Unix socket）：
- *   spawn-fcgi -s /run/agv/status.sock -n ./status
- */
-
-
-
 #include <ctime>
 #include <cstdio>
 #include <cstring>

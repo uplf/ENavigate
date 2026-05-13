@@ -279,6 +279,4 @@ struct RouteExertMsg {
 
 static_assert(sizeof(MqttPublishMsg) <= kMqttPublishMsgSize,
               "MqttPublishMsg exceeds queue msg size");
-
-
 } // namespace agv

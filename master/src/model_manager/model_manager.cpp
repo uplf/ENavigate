@@ -23,9 +23,30 @@ void init_map(agv::ShmLayout* shm_ptr){
     shm_ptr->map.edge_count_ = 3*2;
     shm_ptr->bipaths.bipath_count_=0;
     std::vector<agv::bipath_pair> edges{
-        agv::bipath_pair::create(1, 2, 1, 3*2/2, 10, agv::EdgeStatus::IDLE, "A-B"),
-        agv::bipath_pair::create(2, 3, 2, 3*2/2, 15, agv::EdgeStatus::IDLE, "B-C"),
-        agv::bipath_pair::create(1, 3, 3, 3*2/2, 15, agv::EdgeStatus::IDLE, "A-C"),
+        agv::bipath_pair::create(1, 4,  1, 18, 10, agv::EdgeStatus::IDLE, "L1"),
+        agv::bipath_pair::create(2, 5,  2, 18, 10, agv::EdgeStatus::IDLE, "L2"),
+        agv::bipath_pair::create(3, 6,  3, 18, 10, agv::EdgeStatus::IDLE, "L3"),
+
+        agv::bipath_pair::create(4, 5,  4, 18, 10, agv::EdgeStatus::IDLE, "L4"),
+        agv::bipath_pair::create(5, 6,  5, 18, 10, agv::EdgeStatus::IDLE, "L5"),
+
+        agv::bipath_pair::create(4, 7,  6, 18, 10, agv::EdgeStatus::IDLE, "L6"),
+        agv::bipath_pair::create(5, 8,  7, 18, 10, agv::EdgeStatus::IDLE, "L7"),
+        agv::bipath_pair::create(6, 9,  8, 18, 10, agv::EdgeStatus::IDLE, "L8"),
+
+        agv::bipath_pair::create(7, 8,  9, 18, 10, agv::EdgeStatus::IDLE, "L9"),
+        agv::bipath_pair::create(8, 9,  10,18, 10, agv::EdgeStatus::IDLE, "L10"),
+
+        agv::bipath_pair::create(7, 10, 11,18, 10, agv::EdgeStatus::IDLE, "L11"),
+        agv::bipath_pair::create(8, 11, 12,18, 10, agv::EdgeStatus::IDLE, "L12"),
+        agv::bipath_pair::create(9, 12, 13,18, 10, agv::EdgeStatus::IDLE, "L13"),
+
+        agv::bipath_pair::create(10,11, 14,18, 10, agv::EdgeStatus::IDLE, "L14"),
+        agv::bipath_pair::create(11,12, 15,18, 10, agv::EdgeStatus::IDLE, "L15"),
+
+        agv::bipath_pair::create(10,13, 16,18, 10, agv::EdgeStatus::IDLE, "L16"),
+        agv::bipath_pair::create(11,14, 17,18, 10, agv::EdgeStatus::IDLE, "L17"),
+        agv::bipath_pair::create(12,15, 18,18, 10, agv::EdgeStatus::IDLE, "L18")
     };
     for(auto & e:edges){
         shm_ptr->map.edges_[e.idA-1] = e.generate_edgeA();
@@ -50,9 +71,25 @@ void init_map(agv::ShmLayout* shm_ptr){
             adj_to.edge_ids[adj_to.count++] = i;
         }
     }
-    shm_ptr->map.nodes_[0] = agv::Node{1,10,20,agv::NodeStatus::IDLE,"A","d"};
-    shm_ptr->map.nodes_[1] = agv::Node{2, 30, 20, agv::NodeStatus::IDLE, "B", "2"};
-    shm_ptr->map.nodes_[2] = agv::Node{3, 50, 20, agv::NodeStatus::IDLE, "C", "3"};
+    shm_ptr->map.nodes_[0]  = agv::Node{1,  70,  70,  agv::NodeStatus::IDLE, "N1",  ""};
+    shm_ptr->map.nodes_[1]  = agv::Node{2,  70,  190, agv::NodeStatus::IDLE, "N2",  ""};
+    shm_ptr->map.nodes_[2]  = agv::Node{3,  70,  310, agv::NodeStatus::IDLE, "N3",  ""};
+
+    shm_ptr->map.nodes_[3]  = agv::Node{4,  260, 70,  agv::NodeStatus::IDLE, "N4",  ""};
+    shm_ptr->map.nodes_[4]  = agv::Node{5,  260, 190, agv::NodeStatus::IDLE, "N5",  ""};
+    shm_ptr->map.nodes_[5]  = agv::Node{6,  260, 310, agv::NodeStatus::IDLE, "N6",  ""};
+
+    shm_ptr->map.nodes_[6]  = agv::Node{7,  450, 70,  agv::NodeStatus::IDLE, "N7",  ""};
+    shm_ptr->map.nodes_[7]  = agv::Node{8,  450, 190, agv::NodeStatus::IDLE, "N8",  ""};
+    shm_ptr->map.nodes_[8]  = agv::Node{9,  450, 310, agv::NodeStatus::IDLE, "N9",  ""};
+
+    shm_ptr->map.nodes_[9]  = agv::Node{10, 640, 70,  agv::NodeStatus::IDLE, "N10", ""};
+    shm_ptr->map.nodes_[10] = agv::Node{11, 640, 190, agv::NodeStatus::IDLE, "N11", ""};
+    shm_ptr->map.nodes_[11] = agv::Node{12, 640, 310, agv::NodeStatus::IDLE, "N12", ""};
+
+    shm_ptr->map.nodes_[12] = agv::Node{13, 830, 70,  agv::NodeStatus::IDLE, "N13", ""};
+    shm_ptr->map.nodes_[13] = agv::Node{14, 830, 190, agv::NodeStatus::IDLE, "N14", ""};
+    shm_ptr->map.nodes_[14] = agv::Node{15, 830, 310, agv::NodeStatus::IDLE, "N15", ""};
 }
 void init_car(agv::ShmLayout* shm_ptr){
     shm_ptr->cars.car_count_ = 2;
@@ -60,7 +97,8 @@ void init_car(agv::ShmLayout* shm_ptr){
     shm_ptr->cars.cars_[0] = {
         .id              = 1,
         .status          = agv::CarStatus::IDLE,
-        .current_node_id = 1,
+        .current_node_id = 4,
+        .last_node_id    = 1,
         .current_task_id = 0,
         .target_node_id  = 0,
         .last_start_node_id=1,
@@ -69,7 +107,8 @@ void init_car(agv::ShmLayout* shm_ptr){
     shm_ptr->cars.cars_[1] = {
         .id              = 2,
         .status          = agv::CarStatus::IDLE,
-        .current_node_id = 2,
+        .current_node_id = 5,
+        .last_node_id    = 2,
         .current_task_id = 0,
         .target_node_id  = 0,
         .last_start_node_id=2,

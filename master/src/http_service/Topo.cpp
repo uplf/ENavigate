@@ -1,26 +1,3 @@
-/**
- * topo.cpp — POST /api/ban  /api/access  /api/repair
- *
- * 三个接口都是修改拓扑状态，合在一个进程里通过 REQUEST_URI 区分。
- *
- * ban    : 封禁边/节点 → 写 SHM EdgeStatus/NodeStatus → 发 mq_task_dispatch replan
- * access : 恢复通行   → 写 SHM → 发 replan
- * repair : 标记修复中  → 写 SHM EdgeStatus = FAULT_REPAIR → 发 replan
- *
- * 边通过 ID 直接索引 SHM edges_ 数组（L1 → edges_[0] if edge.id==1）。
- * 实际项目中建议 model_manager 启动时维护一个 id→idx 的映射表；
- * 此处为简化，在 edges_ 数组中线性查找。
- *
- * 编译：
- *   g++ -std=c++17 \
- *       -I../../ -I../../lib \
- *       -o topo_api topo.cpp \
- *       -lfcgi -lrt -lpthread
- *
- * 启动：
- *   spawn-fcgi -s /run/agv/topo.sock -n ./topo_api
- */
-
 #include <cstdio>
 #include <cstring>
 #include <vector>
