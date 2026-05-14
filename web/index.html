@@ -615,7 +615,8 @@ function renderSVG(){
     const mx=(a.x+b.x)/2, my=(a.y+b.y)/2;
     const bg = sel?'#1a4a23':'#21262d';
     h+=`<rect x="${mx-12}" y="${my-9}" width="24" height="16" rx="4" fill="${bg}" stroke="${labelCol}" stroke-width="1" style="cursor:pointer" onclick="toggleEdge('${e.id}')"/>`;
-    h+=`<text x="${mx}" y="${my+1.5}" text-anchor="middle" dominant-baseline="middle" font-size="9" font-family="Share Tech Mono,monospace" fill="${labelCol}" style="cursor:pointer;pointer-events:none">${e.id}</text>`;
+    const errLabel = state.edges[e.id]?.errType ? `-${state.edges[e.id].errType}` : '';
+    h+=`<text x="${mx}" y="${my+1.5}" text-anchor="middle" dominant-baseline="middle" font-size="9" font-family="Share Tech Mono,monospace" fill="${labelCol}" style="cursor:pointer;pointer-events:none">${e.id}${errLabel}</text>`;
   });
 
   // defs (filters)
@@ -1005,7 +1006,7 @@ function generateMockJSON(){
       N13:{status:'idle'},N14:{status:'idle'},N15:{status:'idle'},
     },
     edges:{
-      L1:{status:'fault_temp'},  L2:{status:'fault_repair'},  L3:{status:'occupied'},
+      L1:{status:'fault_temp', errType:'apple'},  L2:{status:'fault_repair'},  L3:{status:'occupied'},
       L4:{status:'idle'},  L5:{status:'occupied'}, L6:{status:'idle'},
       L7:{status:'idle'},  L8:{status:'blocked'}, L9:{status:'idle'},
       L10:{status:'idle'}, L11:{status:'idle'}, L12:{status:'idle'},

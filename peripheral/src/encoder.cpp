@@ -60,8 +60,16 @@ void resetEncoders()
 void Turn(float angle)
 {
     resetEncoders();
-    targetCount1 = (long)(angle * K1);
-    targetCount2 = (long)(angle * K2);
+    if(angle>0)
+    {
+        targetCount1 = (long)(angle * K1);
+        targetCount2 = (long)(angle * K2);
+    }
+    else
+    {
+        targetCount1 = (long)(angle * K2);
+        targetCount2 = (long)(angle * K1);
+    }
     isTurning = true;
 }
 
