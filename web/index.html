@@ -660,6 +660,20 @@ function renderSVG(){
     cx=a.x+(b.x-a.x)*t; cy=a.y+(b.y-a.y)*t;
     h+=`<rect x="${cx-16}" y="${cy-10}" width="32" height="20" rx="4" fill="${col}" stroke="#0d1117" stroke-width="1.5"/>`;
     h+=`<text x="${cx}" y="${cy+1.5}" text-anchor="middle" dominant-baseline="middle" font-family="Share Tech Mono,monospace" font-size="10" font-weight="700" fill="#fff" style="pointer-events:none">${car.id}</text>`;
+    // 方向箭头：沿着 pos 边，从车指向 nxt 节点
+    // 箭头朝向：nxt 是边的哪个端点就指向哪个端点
+    const arrowDx = b.x - a.x, arrowDy = b.y - a.y;
+    const arrowLen = Math.sqrt(arrowDx * arrowDx + arrowDy * arrowDy) || 1;
+    const arrowNx = arrowDx / arrowLen, arrowNy = arrowDy / arrowLen;
+    const dirSign = car.nxt === b.id ? 1 : -1;
+    // 箭头紧贴小车矩形右侧：在小车矩形右边缘中点 + 方向偏移
+    const arrowBaseX = cx + arrowNx * dirSign * 16;
+    const arrowBaseY = cy + arrowNy * dirSign * 16;
+    const tipOff = 10;         // 箭头长度
+    const halfW  = 5;          // 箭头尾部半宽
+    const tipX = arrowBaseX + arrowNx * dirSign * tipOff;
+    const tipY = arrowBaseY + arrowNy * dirSign * tipOff;
+    h+=`<polygon points="${arrowBaseX+halfW*arrowNy},${arrowBaseY-halfW*arrowNx} ${arrowBaseX-halfW*arrowNy},${arrowBaseY+halfW*arrowNx} ${tipX},${tipY}" fill="${col}" stroke="#0d1117" stroke-width="0.5" opacity="0.9"/>`;
     // moving indicator
     if(car.status==='moving'){
       h+=`<circle cx="${cx+10}" cy="${cy-7}" r="3" fill="#3fb950"><animate attributeName="opacity" values="1;0;1" dur="1s" repeatCount="indefinite"/></circle>`;
@@ -806,20 +820,23 @@ function doAssign(){
   if(!state.selectedCar){ toast('请先选中一辆小车'); return; }
   if(!state.selectedNode){ toast('请先选中目标节点'); return; }
   const label = `指派 ${state.selectedCar} → ${state.selectedNode}`;
+  const car = state.selectedCar;
+  const target = state.selectedNode;
+  clearSelection();
   addLog('info', `[请求] ${label}，等待服务器响应...`);
   setBroadcast(`[请求中] ${label}`);
   toast('请求已发送');
-  clearSelection();
-  postAPI('/api/assign', { car: state.selectedCar, target: state.selectedNode }, label);
+  postAPI('/api/assign', { car, target }, label);
 }
 function doCancel(){
   if(!state.selectedCar){ toast('请先选中一辆小车'); return; }
   const label = `取消 ${state.selectedCar} 任务`;
+  const car = state.selectedCar;
+  clearSelection();
   addLog('info', `[请求] ${label}，等待服务器响应...`);
   setBroadcast(`[请求中] ${label}`);
   toast('请求已发送');
-  clearSelection();
-  postAPI('/api/cancel', { car: state.selectedCar }, label);
+  postAPI('/api/cancel', { car }, label);
 }
 function doBan(){
   if(!state.selectedEdges.size && !state.selectedNode){ toast('请先选中节点或路径'); return; }
@@ -827,10 +844,10 @@ function doBan(){
   const edges = allTargets.filter(id => id.startsWith('L'));
   const nodes = allTargets.filter(id => id.startsWith('N'));
   const label = `禁止通行：${allTargets.join('、')}`;
+  clearSelection();
   addLog('info', `[请求] ${label}，等待服务器响应...`);
   setBroadcast(`[请求中] 封闭：${allTargets.join('、')}`);
   toast('请求已发送');
-  clearSelection();
   postAPI('/api/ban', { edges, nodes }, label);
 }
 function doAllow(){
@@ -839,10 +856,10 @@ function doAllow(){
   const edges = allTargets.filter(id => id.startsWith('L'));
   const nodes = allTargets.filter(id => id.startsWith('N'));
   const label = `恢复通行：${allTargets.join('、')}`;
+  clearSelection();
   addLog('info', `[请求] ${label}，等待服务器响应...`);
   setBroadcast(`[请求中] 开放：${allTargets.join('、')}`);
   toast('请求已发送');
-  clearSelection();
   postAPI('/api/access', { edges, nodes }, label);
 }
 function doRepair(){
@@ -850,10 +867,10 @@ function doRepair(){
   const repairTargets = [...state.selectedEdges].filter(id => state.edges[id]?.status === 'fault_repair');
   if(repairTargets.length === 0){ toast('选中的路径中没有待修复故障'); return; }
   const label = `指派修复：${repairTargets.join('、')}`;
+  clearSelection();
   addLog('info', `[请求] ${label}，等待服务器响应...`);
   setBroadcast(`[请求中] 修复：${repairTargets.join('、')}`);
   toast('请求已发送');
-  clearSelection();
   postAPI('/api/repair', { edges: repairTargets }, label);
 }
 function doRefresh(){
