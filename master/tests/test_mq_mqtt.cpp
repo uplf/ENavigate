@@ -36,6 +36,7 @@ int main(int argc, char *argv[]) {
             if(op_name[1]=='2')msg=agv::MqttPublishMsg::make_ori(1,agv::OriCmd::kRight);
             if(op_name[1]=='3')msg=agv::MqttPublishMsg::make_ori(1,agv::OriCmd::kStraight);
             if(op_name[1]=='4')msg=agv::MqttPublishMsg::make_ori(1,agv::OriCmd::kARRIVED);
+            if(op_name[1]=='5')msg=agv::MqttPublishMsg::make_ori(1,agv::OriCmd::kUTurn);
             break;
         case 'q':
             if(op_name[1]=='1')msg=agv::MqttPublishMsg::make_query(1,agv::QueryCmd::kStatus);

@@ -75,15 +75,21 @@ namespace agv{
             //默认情况下，arrived_node和last_node为0xFFFF，表示由router根据当前状态推断
             if(msg.last_node==0xFFFF) msg.last_node=current_car.last_node_id;
             if(msg.arrived_node==0xFFFF) msg.arrived_node=current_car.current_node_id;
-            
+            LOG_INFO(proc_name,"handled-last:%u, arrived:%u",msg.last_node,msg.arrived_node);
             int next_path_idx=current_car.path_len-1;
+            uint16_t next_id;
             for(;;next_path_idx--){
                 if(next_path_idx<0){
                     //没有找到相关路径，出错。
                     LOG_ERROR(proc_name,"fail to find the next path for car%u",msg.car_id);
                     return false;
                 }
-                if(map_data.edges_[current_car.path_stack[next_path_idx]].from_node==msg.arrived_node){
+                LOG_INFO(proc_name,"scanning,pathNo:%d, pathIdx:%d, path-from:%u, path-to:%u",
+                    next_path_idx,current_car.path_stack[next_path_idx],
+                    map_data.edges_[current_car.path_stack[next_path_idx]-1].from_node,
+                    map_data.edges_[current_car.path_stack[next_path_idx]-1].to_node);
+                if(map_data.edges_[current_car.path_stack[next_path_idx]-1].from_node==msg.arrived_node){
+                    next_id=map_data.edges_[current_car.path_stack[next_path_idx]-1].to_node;
                     break;
                 }
             }
@@ -91,9 +97,9 @@ namespace agv{
             MqttPublishMsg mqtt_msg;
 #ifndef _AGV_USE_ANGLE_MODE
             {
-                auto turn_cmd=generate_turn(map_data.nodes_[current_car.last_node_id].x,map_data.nodes_[current_car.last_node_id].y,
-                    map_data.nodes_[current_car.current_node_id].x,map_data.nodes_[current_car.current_node_id].y,
-                    map_data.nodes_[msg.arrived_node].x,map_data.nodes_[msg.arrived_node].y);
+                auto turn_cmd=generate_turn(map_data.nodes_[current_car.last_node_id-1].x,map_data.nodes_[current_car.last_node_id-1].y,
+                    map_data.nodes_[current_car.current_node_id-1].x,map_data.nodes_[current_car.current_node_id-1].y,
+                    map_data.nodes_[next_id-1].x,map_data.nodes_[next_id-1].y);
                 mqtt_msg = MqttPublishMsg::make_ori(msg.car_id,turn_cmd);
             }
 #else
@@ -101,7 +107,7 @@ namespace agv{
 #endif
             _mq_send.send(mqtt_msg,kPrioHigh);
             current_car.last_node_id=current_car.current_node_id;
-            current_car.current_node_id=map_data.edges_[current_car.path_stack[next_path_idx]].to_node;
+            current_car.current_node_id=next_id;//map_data.edges_[current_car.path_stack[next_path_idx]].to_node;
             shm_update_car(_shm.ptr(),msg.car_id-1,current_car);
             return true;
         }
@@ -116,8 +122,8 @@ namespace agv{
                 if(cal_c>0)return agv::OriCmd::kStraight;
                 else return agv::OriCmd::kUTurn;
             }
-            else if(cal_a>cal_b)return agv::OriCmd::kLeft;
-            else return agv::OriCmd::kRight;
+            else if(cal_a>cal_b)return agv::OriCmd::kRight;
+            else return agv::OriCmd::kLeft;
         }
         agv::ShmClient _shm;
         agv::MqSender<MqttPublishMsg> _mq_send;//发送mqtt消息，用于即时指令

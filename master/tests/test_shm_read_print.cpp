@@ -119,10 +119,10 @@ int main() {
 
     for (uint16_t i = 0; i < cars.car_count_ && i < AGV_MAX_CARS; ++i) {
         const auto& c = cars.cars_[i];
-        printf("    [%u] id=%u  status=%-8s  node=%u  target=%u"
+        printf("    [%u] id=%u  status=%-8s  last=%u  node=%u  target=%u"
                "  task=%u  path_len=%u  path=[",
                i, c.id, car_status_str(c.status),
-               c.current_node_id, c.target_node_id,
+               c.last_node_id,c.current_node_id, c.target_node_id,
                c.current_task_id, c.path_len);
         for (uint8_t j = 0; j < c.path_len && j < AGV_MAX_PATHLEN; ++j) {
             printf("%s%u", (j > 0) ? "," : "", c.path_stack[j]);

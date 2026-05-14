@@ -18,6 +18,7 @@
 
 static const char* PROC_NAME = "mqtt_subscriber";
 
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 事件解析（不依赖 JSON 库，手动解析键值）
 // ─────────────────────────────────────────────────────────────────────────────
@@ -112,13 +113,15 @@ static CarEvent parse_event(const char* topic, const char* payload) {
     } else if (strncmp(type_val, "OBSTACLE", vlen) == 0) {
         ev.type = EventType::kOBSTACLE;
         const char* kind_val = json_get(payload, "param", &vlen);
+        LOG_INFO(PROC_NAME,"handling obstacle payload-name:%s, name:%s",payload,kind_val);
         if (kind_val && vlen < AGC_MAX_LABEL-1) {
             char buf[AGC_MAX_LABEL];
             memcpy(buf, kind_val+1, vlen-2);
             buf[vlen-2] = '\0'; 
             ev.param = std::string(buf);
             ev.is_temporary = is_temp(buf);
-            ev.pass_th = (buf[0]=='n')?false:true;  // 初始化为 false
+            ev.pass_th = (kind_val[0]=='n')?false:true;  // 初始化为 false
+            LOG_INFO(PROC_NAME,"TH:%c,out:%d",kind_val[0],ev.pass_th);
         }else{
             LOG_ERROR(PROC_NAME,"failed to analyse json");
         }
@@ -217,14 +220,17 @@ private:
         uint16_t to_node=snap.current_node_id;
         auto map=agv::shm_read_map(_shm.ptr());
         uint16_t edge_id=0xFFFF,edge_id2;
-        for(int i=0;i<map.adj_[from_node].count;++i){
-            edge_id=map.adj_[from_node].edge_ids[i];
+        LOG_WARN(PROC_NAME,"detect-obstacle,type:%u, type:%s, pass_th:%u",status,label);
+        for(int i=0;i<map.adj_[from_node-1].count;++i){
+            edge_id=map.adj_[from_node-1].edge_ids[i];
             if(map.edges_[edge_id-1].to_node==to_node){
+                LOG_INFO(PROC_NAME,"blocking path:%u",edge_id);
                 agv::shm_set_edge_status(_shm.ptr(), edge_id-1, status, label);
                 auto pathdata=agv::shm_read_bipaths(_shm.ptr());
                 for(int i=0;i<pathdata.bipath_count_;++i){
                     auto edge_pair=pathdata.paths_[i];
                     if(edge_pair.get_other_path(edge_id,&edge_id2)!=-1){
+                        LOG_INFO(PROC_NAME,"blocking bi-path:%u",edge_id2);
                         agv::shm_set_edge_status(_shm.ptr(), edge_id2-1, status, label);
                         break;
                     }
@@ -243,7 +249,8 @@ private:
                 break;
             }
             case EventType::kOBSTACLE:{
-                LOG_INFO(PROC_NAME,"car%u detected %s obstacle", ev.car_id, ev.param.c_str());
+                LOG_INFO(PROC_NAME,"car%u detected %s obstacle, tmp:%d, th:%d",
+                     ev.car_id, ev.param.c_str(),ev.is_temporary,ev.pass_th);
                 //如果不是临时障碍，开始重规划
                 if(!ev.is_temporary){
                     alter_edges_status(ev.car_id,agv::EdgeStatus::FAULT_REPAIR,ev.param.c_str());

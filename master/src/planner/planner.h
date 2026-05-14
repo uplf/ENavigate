@@ -78,21 +78,27 @@ namespace agv{
                 auto last_node_id=current_car.last_node_id;
                 auto current_node_id=current_car.current_node_id;
                 uint16_t rev_node=0xFFFF;
-                for(int i=0;i<map_data.adj_[last_node_id].count;++i){
+                for(int i=0;i<map_data.adj_[last_node_id-1].count;++i){
                     //遍历其他连接的路径
-                    auto edge_id=map_data.adj_[last_node_id].edge_ids[i];
+                    auto edge_id=map_data.adj_[last_node_id-1].edge_ids[i];
                     if(edge_id>=map_data.edge_count_)continue;
-                    auto edge=map_data.edges_[edge_id];
-                    auto node_s=map_data.nodes_[edge.to_node];
+                    auto edge=map_data.edges_[edge_id-1];
+                    auto node_s=map_data.nodes_[edge.to_node-1];
+
+                    LOG_INFO(proc_name,"rev_judging,from node:%u, the edge: %u, to node:%u",
+                            last_node_id,edge_id,edge.to_node);
+                    
                     //确认对应的点不是当前点，并且线路没封
                     if(node_s.id==current_node_id||
                         edge.status==agv::EdgeStatus::BLOCKED||
                         edge.status!=agv::EdgeStatus::IDLE)continue;
                     //判断是否为反向点
-                    if(jud_rev(node_s.x,node_s.y,map_data.nodes_[last_node_id].x,map_data.nodes_[last_node_id].y,
-                        map_data.nodes_[last_node_id].x,map_data.nodes_[last_node_id].y)){
+                    if(jud_rev(map_data.nodes_[last_node_id-1].x,map_data.nodes_[last_node_id-1].y,
+                        map_data.nodes_[current_node_id-1].x,map_data.nodes_[current_node_id-1].y,
+                        node_s.x,node_s.y)){
                         rev_node=node_s.id;
-                        break;
+                        LOG_INFO(proc_name,"rev-node-found,%u",rev_node);
+                        //break;
                     }
                 }
                 if(rev_node==0xFFFF){
@@ -161,13 +167,15 @@ namespace agv{
 	    return true;
         }
         private:
+        //(x1,y1)为起点坐标，(x2,y2)为当前点坐标，(x3,y3)为目标点坐标
         bool jud_rev(uint16_t x1,uint16_t y1,uint16_t x2,uint16_t y2,uint16_t x3,uint16_t y3){
-            
-            int cal_a=(int(x3)-int(x1));
-            int cal_b=(int(y3)-int(y1));
-            int cal_c=(int(x3)-int(x2));
-            int cal_d=(int(y3)-int(y2));
-            return cal_a*cal_d-cal_b*cal_c==0;
+            int cal_a=(int(x2)-int(x1))*(int(y3)-int(y1));
+            int cal_b=(int(y2)-int(y1))*(int(x3)-int(x1));
+            if(cal_a==cal_b){
+                //区分直行和掉头
+                return (int(x3)-int(x2))*(int(x2)-int(x1))+(int(y3)-int(y2))*(int(y2)-int(y1))<=0;
+            }
+            return false;
         }
         std::vector<uint16_t> find_path(agv::MapData map_data, uint16_t start_node, uint16_t target_node) {
             std::priority_queue<AStarNode, std::vector<AStarNode>, std::greater<AStarNode>> open_set;

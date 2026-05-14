@@ -91,7 +91,7 @@ static void build_status_json(const agv::MapData& map,
             LOG_ERROR(proc_name,"car %u 找不到合法边",c.id);
             continue;
         }
-        if(edge_display_id>map.edge_count_)edge_display_id-=map.edge_count_;
+        if(edge_display_id>map.edge_count_/2)edge_display_id-=map.edge_count_/2;
         // path_stack → JSON array
         append(out, cap, pos,
                "\"C%u\":{"
@@ -106,7 +106,7 @@ static void build_status_json(const agv::MapData& map,
                edge_display_id,c.current_node_id);
         for (uint8_t p = 0; p < c.path_len; ++p) {
             if (p > 0) append(out, cap, pos, ",");
-            append(out, cap, pos, "\"N%u\"", c.path_stack[p]);
+            append(out, cap, pos, "\"L%u\"", c.path_stack[p]-(c.path_stack[p]>map.edge_count_/2?map.edge_count_/2:0));
         }
         append(out, cap, pos, "],");
 
