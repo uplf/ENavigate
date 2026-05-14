@@ -48,6 +48,8 @@ int main(int argc, char *argv[]) {
             if(op_name[1]=='4')msg=agv::MqttPublishMsg::make_action(1,agv::ActionCmd::kUturn);
             break;
     }
+    if(op_name[2]=='e')msg.set_event(true);
+    if(op_name[2]=='E')msg.cmd_type=agv::MqttCmdType::TST_POS;
     LOG_INFO(proc_name,"send:%d",int(tx.send(msg,1)));
     return 0;
 }

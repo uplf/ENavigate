@@ -6,6 +6,8 @@
 #include <cstring>
 #include <string>
 
+
+
 namespace agv {
 
 /// 系统最大节点数（静态拓扑，与 SHM 定义保持一致）
@@ -116,6 +118,7 @@ enum class MqttCmdType : uint8_t {
     CMD_ori=1,
     QUERY=2,
     ACTION=3,
+    TST_POS=4,
 };
 std::string mqtt_cmd_type_to_str(MqttCmdType type) {
     switch (type) {
@@ -195,6 +198,10 @@ struct MqttPublishMsg {
     uint8_t  next_node;         ///< kMove 时的目标节点，其余忽略
     uint8_t  qos;               ///< MQTT QoS（0/1/2）
 
+    #ifdef _AGV_USE_EVENT_MSG
+    bool is_event=false;       ///TEST***< 是否为事件模拟消息（如 ARRIVED），若是，采用预定映射
+    #endif
+
     int64_t  timestamp_us;
 
     union{
@@ -235,8 +242,39 @@ struct MqttPublishMsg {
         m.qos       = 2;
         return m;
     }
-
+    
+    //TEST***< 事件模拟消息构造函数
+    void set_event(bool is_event) {
+        #ifdef _AGV_USE_EVENT_MSG
+        this->is_event = is_event;
+        #endif
+    }
     void to_mqtt(char* topic_buf, size_t topic_buf_size, char* payload_buf, size_t payload_buf_size) const {
+        #ifdef _AGV_USE_EVENT_MSG
+        if(is_event){
+            //TEST***< 根据 cmd_type 和 car_id 生成 topic
+            //测试用事件消息格式，topic: car/{car_id}/event payload: {"type":"EVENT","param":"ARRIVED/UTURN"}
+            snprintf(topic_buf, topic_buf_size, "car/%u/event", car_id);
+            switch (cmd_type) {
+                case MqttCmdType::CMD_angle:
+                    snprintf(payload_buf, payload_buf_size, "{\"type\":\"ARRIVE\",\"param\":\"\"}");
+                    break;
+                case MqttCmdType::CMD_ori:
+                    snprintf(payload_buf, payload_buf_size, "{\"type\":\"OBSTACLE\",\"param\":\"yTEST\"}");
+                    break;
+                case MqttCmdType::QUERY:
+                    snprintf(payload_buf, payload_buf_size, "{\"type\":\"OBSTACLE\",\"param\":\"nTEST\"}");
+                    break;
+                case MqttCmdType::ACTION:
+                     snprintf(payload_buf, payload_buf_size, "{\"type\":\"REPAIRED\",\"param\":\"\"}");
+                    break;
+                default:
+                    snprintf(payload_buf, payload_buf_size, "{\"type\":\"POSITION\",\"param\":\"7-10\"}");
+            }
+            return;
+        }
+        #endif
+
         // 根据 cmd_type 和 car_id 生成 topic
         snprintf(topic_buf, topic_buf_size, "car/%u/cmd", car_id);
         // 根据 cmd_type 和参数生成 payload（示例为 JSON 格式）
@@ -246,19 +284,20 @@ struct MqttPublishMsg {
                 break;
             case MqttCmdType::CMD_ori:
                 snprintf(payload_buf, payload_buf_size, "{\"type\":\"ORIENT\",\"param\":\"%s\"}",
-                         ori_cmd_to_str(params.c_ori.cmd).c_str());
+                        ori_cmd_to_str(params.c_ori.cmd).c_str());
                 break;
             case MqttCmdType::QUERY:
                 snprintf(payload_buf, payload_buf_size, "{\"type\":\"QUERY\",\"param\":\"%s\"}",
-                         query_cmd_to_str(params.c_query.cmd).c_str());
+                        query_cmd_to_str(params.c_query.cmd).c_str());
                 break;
             case MqttCmdType::ACTION:
                 snprintf(payload_buf, payload_buf_size, "{\"type\":\"ACTION\",\"param\":\"%s\"}",
-                         action_cmd_to_str(params.c_action.cmd).c_str());
+                        action_cmd_to_str(params.c_action.cmd).c_str());
                 break;
             default:
                 payload_buf[0] = '\0';
         }
+        
     }
 };
 

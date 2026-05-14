@@ -143,3 +143,23 @@
 | type  | -                       | POSITION                                      | -                          |
 | param | 背对节点+朝向节点<br /> | 拼接\<string\><br />背对节点号+"-"+朝向节点号 | 举例<br />"2-8"<br />"7-1" |
 
+
+
+
+
+---
+
+
+
+## 主机模拟测试映射表
+
+| mq-type     | 原意   | 映射意           |
+| ----------- | ------ | ---------------- |
+| *CMD_angle* | ANGLE  | ARRIVE           |
+| *CMD_ori*   | ORIENT | OBSTACLE "yTEST" |
+| *QUERY*     | QUERY  | OBSTACLE "nTEST" |
+| *ACTION*    | ACTION | REPAIRED         |
+| TST_POS     | -      | POSITION "7-10"  |
+
+ 
+
