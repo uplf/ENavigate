@@ -17,23 +17,11 @@
 
 const char* proc_name="model-mng";
 
+static std::atomic<bool> g_reset_requested{false};
 
-// ── eventfd：用于触发地图重置 ────────────────────────────────────────────────
-// 进程内其他模块调用 trigger_map_reset() 写入 1，
-// 主循环检测到后调用 reset_shm_map() 原地重写共享内存。
-static int g_reset_efd = -1;  ///< 全局 eventfd fd，由 main() 初始化
-
-/// 触发地图重置（可从进程内任意位置调用）
-inline void trigger_map_reset() {
-    if (g_reset_efd < 0) return;
-    uint64_t val = 1;
-    if (::write(g_reset_efd, &val, sizeof(val)) < 0) {
-        // 若计数器已达 UINT64_MAX-1（极不可能），忽略 EAGAIN
-        if (errno != EAGAIN) {
-            fprintf(stderr, "[model_manager] trigger_map_reset: write eventfd: %s\n",
-                    strerror(errno));
-        }
-    }
+static void on_sigusr1(const char* proc_name) {
+    LOG_INFO(proc_name, "SIGUSR1 received, request reset");
+    g_reset_requested.store(true, std::memory_order_release);
 }
 
 //初始状态 TODO
@@ -163,7 +151,7 @@ void init_car(agv::ShmLayout* shm_ptr){
 
 int main(){
     LOG_INFO(proc_name,"begin");
-    agv::SignalHandler sig(proc_name);
+    agv::SignalHandler sig(proc_name, on_sigusr1);
     try {
         sig.init();
     } catch (const std::exception& e) {
@@ -191,13 +179,6 @@ int main(){
         return 1;
     }
 
-    // 创建 eventfd（EFD_NONBLOCK：主循环 read 时不阻塞）
-    int reset_efd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-    if (reset_efd < 0) {
-        LOG_ERROR(proc_name, "eventfd: %s", strerror(errno));
-        return 1;
-    }
-    g_reset_efd = reset_efd;  // 暴露给进程内触发函数
 
     //注册退出清理序列
     agv::SecureExit exit_seq(proc_name);
@@ -206,13 +187,11 @@ int main(){
 
     //组建 poll 监听数组
     constexpr int FD_SIG   = 0;
-    constexpr int FD_RESET = 1;
 
-    struct pollfd fds[2];
+    struct pollfd fds[1];
     fds[FD_SIG].fd     = sig.get_fd();
     fds[FD_SIG].events = POLLIN;
-    fds[FD_RESET].fd     = reset_efd;
-    fds[FD_RESET].events = POLLIN;
+
 
     LOG_INFO(proc_name,"enter-poll-loop");
 
@@ -229,18 +208,9 @@ int main(){
 
         if (fds[FD_SIG].revents & POLLIN) {
             sig.handle_read();
-            continue;
-        }
-
-        // eventfd 触发：消费计数后执行地图重置
-        if (fds[FD_RESET].revents & POLLIN) {
-            uint64_t cnt = 0;
-            // 一次性读取并清零计数器（EFD_NONBLOCK，不会阻塞）
-            if (::read(reset_efd, &cnt, sizeof(cnt)) == sizeof(cnt)) {
-                LOG_INFO(proc_name, "reset triggered (cnt=%llu)",
-                         (unsigned long long)cnt);
-            }
+        if (g_reset_requested.exchange(false, std::memory_order_acq_rel)) {
             reset_shm_map(owner_shm.ptr());
+        }
             continue;
         }
 

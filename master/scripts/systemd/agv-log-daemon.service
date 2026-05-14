@@ -1,6 +1,6 @@
 [Unit]
 Description=AGV Log Daemon — centralized logging via POSIX message queue
-Documentation=https://github.com/openclaw/ENavigate
+Documentation=https://github.com/uplf/ENavigate
 After=syslog.target
 Wants=syslog.target
 
