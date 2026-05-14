@@ -20,7 +20,7 @@ int main(){
     }
     agv::MqReceiver<agv::TaskDispatchMsg> mq;
     try {
-        mq.init(agv::kMqTaskDispatch);
+        mq.init(agv::kMqTaskDispatch, agv::kTaskDispatchMaxMsg, agv::kTaskDispatchMsgSize);
     } catch (const std::exception& e) {
         LOG_ERROR(proc_name,"fail to create mq:%s",e.what());
         return 1;
@@ -64,6 +64,7 @@ int main(){
             continue;
         }
         if (fds[FD_MQ].revents & POLLIN) {
+            LOG_INFO(proc_name,"recv-task!");
             agv::TaskDispatchMsg msg_recv={};
             unsigned proi;
             mq.receive(msg_recv,proi);

@@ -17,6 +17,8 @@
 #include "signal_handler.h"
 #include "secure_exit.h"
 
+#include <string>//test only
+
 extern const char* proc_name;
 
 namespace agv{
@@ -99,7 +101,13 @@ namespace agv{
                     return false;
                 }else start_node=rev_node;
             }
-            auto path=find_path(map_data,current_car.current_node_id,target_node);
+            auto path=find_path(map_data,start_node,target_node);
+            LOG_INFO(proc_name,"begin to transmit");
+            for (auto m : path) {
+                LOG_INFO(proc_name,"cur:%d",m);
+            }
+            LOG_INFO(proc_name,"done");
+            return true;
             if(path.empty()||path.size()>AGV_MAX_PATHLEN){
                 LOG_ERROR(proc_name,"fail to schedule | reason:A-no path available;B-path too long;C-pramgram err");
                 switch(msg.action){

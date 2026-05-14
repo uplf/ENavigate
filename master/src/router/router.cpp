@@ -20,7 +20,7 @@ int main(){
 
     agv::MqReceiver<agv::RouteExertMsg> mq;
     try {
-        mq.init(agv::kMqRouteExert);
+        mq.init(agv::kMqRouteExert, agv::kRouteExertMaxMsg, agv::kRouteExertMsgSize);
     } catch (const std::exception& e) {
         LOG_ERROR(proc_name,"fail to create mq:%s",e.what());
         return 1;

@@ -18,6 +18,9 @@ target_link_libraries(test_tmp PRIVATE agv_logger agv_ipc -lpthread systemd rt)
 add_executable(test_mq_mqtt test_mq_mqtt.cpp)
 target_link_libraries(test_mq_mqtt PRIVATE agv_logger agv_ipc -lpthread systemd rt)
 
+add_executable(test_mq_inject test_mq_inject.cpp)
+target_link_libraries(test_mq_inject PRIVATE agv_logger agv_ipc -lpthread systemd rt)
+
 add_executable(test_timer_fd test_timer_fd.cpp)
 target_link_libraries(test_timer_fd PRIVATE agv_timer rt)
 
