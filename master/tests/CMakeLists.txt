@@ -12,6 +12,9 @@ target_link_libraries(test_secureExit PRIVATE agv_ipc systemd rt)
 add_executable(test_shm test_shm.cpp)
 target_link_libraries(test_shm PRIVATE agv_ipc -lpthread systemd rt)
 
+add_executable(test_shm_read_print test_shm_read_print.cpp)
+target_link_libraries(test_shm_read_print PRIVATE agv_ipc -lpthread systemd rt)
+
 add_executable(test_tmp test_tmp.cpp)
 target_link_libraries(test_tmp PRIVATE agv_logger agv_ipc -lpthread systemd rt)
 

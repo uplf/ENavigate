@@ -148,8 +148,8 @@ namespace agv{
         Edge generate_edgeB() const {
             Edge e;
             e.id = idB;
-            e.from_node = from_node;
-            e.to_node = to_node;
+            e.from_node = to_node;
+            e.to_node = from_node;
             e.weight = weight;
             e.status = status;
             strncpy(e.label, label, sizeof(e.label) - 1);

@@ -79,17 +79,31 @@ static void build_status_json(const agv::MapData& map,
         const auto& c = cars.cars_[i];
         if (i > 0) append(out, cap, pos, ",");
 
+        uint16_t edge_display_id=0xFFFF;
+        for(int i=0;i<map.adj_[c.last_node_id-1].count;i++){
+            auto edge_id=map.adj_[c.last_node_id-1].edge_ids[i];
+            if(map.edges_[edge_id-1].to_node==c.current_node_id){
+                edge_display_id=edge_id;
+                break;
+            }
+        }
+        if(edge_display_id==0xFFFF){
+            LOG_ERROR(proc_name,"car %u 找不到合法边",c.id);
+            continue;
+        }
+        if(edge_display_id>map.edge_count_)edge_display_id-=map.edge_count_;
         // path_stack → JSON array
         append(out, cap, pos,
                "\"C%u\":{"
                "\"id\":\"C%u\","
                "\"name\":\"小车%u\","
                "\"status\":\"%s\","
-               "\"pos\":\"N%u\","
+               "\"pos\":\"L%u\","
+               "\"nxt\":\"N%u\","
                "\"path\":[",
                c.id, c.id, c.id,
                car_status_str(static_cast<uint8_t>(c.status)),
-               c.current_node_id);
+               edge_display_id,c.current_node_id);
         for (uint8_t p = 0; p < c.path_len; ++p) {
             if (p > 0) append(out, cap, pos, ",");
             append(out, cap, pos, "\"N%u\"", c.path_stack[p]);

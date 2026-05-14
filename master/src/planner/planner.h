@@ -101,13 +101,14 @@ namespace agv{
                     return false;
                 }else start_node=rev_node;
             }
+            LOG_INFO(proc_name,"arr-start:%d,end:%d",start_node,target_node);
             auto path=find_path(map_data,start_node,target_node);
-            LOG_INFO(proc_name,"begin to transmit");
-            for (auto m : path) {
-                LOG_INFO(proc_name,"cur:%d",m);
-            }
-            LOG_INFO(proc_name,"done");
-            return true;
+            LOG_INFO(proc_name,"finish plan, routeLenth:%u",path.size());
+            //LOG_INFO(proc_name,"begin to transmit");
+            //for (auto m : path) {
+            //    LOG_INFO(proc_name,"cur:%d",m);
+           // }
+            //LOG_INFO(proc_name,"done");
             if(path.empty()||path.size()>AGV_MAX_PATHLEN){
                 LOG_ERROR(proc_name,"fail to schedule | reason:A-no path available;B-path too long;C-pramgram err");
                 switch(msg.action){
@@ -132,6 +133,7 @@ namespace agv{
             //更新路径信息and小车信息
             if(msg.immediate==ImmeStra::kUturnNoCross)current_car.last_node_id=current_car.current_node_id;
             current_car.current_node_id=start_node;
+            current_car.target_node_id=target_node;
             current_car.path_len=0;
             current_car.status=CarStatus::MOVING;
             for(auto i:path){
@@ -184,7 +186,7 @@ namespace agv{
             if (start_node >= n || target_node >= n)
                 return {};
             g_cost[start_node] = 0.0f;
-            open_set.push({start_node, heuristic(map_data.nodes_[start_node], map_data.nodes_[target_node])});
+            open_set.push({start_node, heuristic(map_data.nodes_[start_node-1], map_data.nodes_[target_node-1])});
 
             while (!open_set.empty()) {
                 AStarNode current_node = open_set.top();
@@ -206,17 +208,17 @@ namespace agv{
                     std::reverse(path_edges.begin(), path_edges.end());
                     return path_edges;
                 }
-                const AdjEntry& adj = map_data.adj_[current];
+                const AdjEntry& adj = map_data.adj_[current-1];
                 for (int i = 0; i < adj.count; ++i) {
                     uint16_t edge_id = adj.edge_ids[i];
                     if (edge_id >= AGV_MAX_EDGES || edge_id >= map_data.edge_count_)
                         continue;
 
-                    const Edge& edge = map_data.edges_[edge_id];
+                    const Edge& edge = map_data.edges_[edge_id-1];
                     uint16_t next_node = (edge.from_node == current) ? edge.to_node : edge.from_node;
                     if (next_node >= AGV_MAX_NODES || next_node >= n)
                         continue;
-                    const Node& next_ptr = map_data.nodes_[next_node];
+                    const Node& next_ptr = map_data.nodes_[next_node-1];
                     EdgeStatus e_status = edge.status;
                     NodeStatus n_status = next_ptr.status;
                     if (e_status == EdgeStatus::BLOCKED ||
