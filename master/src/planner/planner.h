@@ -184,7 +184,7 @@ namespace agv{
             if (start_node >= n || target_node >= n)
                 return {};
             g_cost[start_node] = 0.0f;
-            open_set.push({start_node, heuristic(map_data.nodes_[start_node], map_data.nodes_[target_node])});
+            open_set.push({start_node, heuristic(map_data.nodes_[start_node-1], map_data.nodes_[target_node-1])});
 
             while (!open_set.empty()) {
                 AStarNode current_node = open_set.top();

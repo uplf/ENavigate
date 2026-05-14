@@ -11,6 +11,8 @@
 //#define _AGV_PRINT_DEBUG
 //MQTT全部测试回显
 //#define _AGV_PRINT_PRINT
+//是否使用事件模拟消息（如 ARRIVED），若使用，构造消息时调用 set_event(true) 即可
+#define _AGV_USE_EVENT_MSG
 
 
 //****连接设置区 */

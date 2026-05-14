@@ -374,36 +374,41 @@ GET /api/status
 ### 3. 小车状态
 
 ```json
-{
-  "cars": {
+"cars": {
     "C1": {
-      "id": "C1",
-      "name": "小车1",
-      "status": "idle",
-      "pos": "N1",
-      "path": ["L2", "L8"] 
-      "task": null
+        "id": "C1",
+        "name": "小车1",
+        "status": "moving",
+        "pos": "L1",
+        "nxt": "N4",
+        "path": [
+            "L6",
+            "L9",
+            "L12"
+        ],
+        "task": null
     },
     "C2": {
-      "id": "C2",
-      "name": "小车2",
-      "status": "moving",
-      "pos": "L5",
-      "path": ["L1","L5", "L8"] ,
-      "task": {
-        "id": "T002",
-        "from": "N3",
-        "to": "N4"
-      }
+        "id": "C2",
+        "name": "小车2",
+        "status": "moving",
+        "pos": "L2",
+        "nxt": "N5",
+        "path": [
+            "L7",
+            "L12",
+            "L15"
+        ],
+        "task": null
     }
-  }
 }
 ```
 
 **小车状态字段说明：**
 
 - `status`: 小车状态，可选值：`idle`(空闲), `moving`(行进中), `fault`(故障), `offline`(离线)
-- `pos`: 当前位置，格式为节点ID(如"N1")或路径ID(如"L5")
+- `pos`: 当前位置，格式为路径ID(如"L5")
+- `nxt`:朝向节点号，格式为节点ID(如"N3")
 - `task`: 当前任务，`null`表示无任务。行进中小车必须有任务信息。
 
 ### 4. 节点和路径状态
@@ -495,90 +500,218 @@ GET /api/status
 
 ```json
 {
-  "timestamp": "2026-04-18 14:30:25",
-  "system_status": "正常运行",
-  "online_cars": 2,
-  "task_count": 3,
-  "broadcast": "[14:30] 系统自动刷新 · C2 正在执行任务(N3→N4) · L8 禁止通行",
-  "alerts": [
-    {
-      "level": "warn",
-      "msg": "L8 路径封闭，绕行建议：L2→L6→L5"
-    }
-  ],
-  "cars": {
-    "C1": {
-      "id": "C1",
-      "name": "小车1",
-      "status": "idle",
-      "pos": "N1",
-      "task": null
+    "timestamp": "2026-05-14 15:34:06",
+    "system_status": "正常运行",
+    "online_cars": 2,
+    "task_count": 0,
+    "broadcast": "[15:34:06] 系统运行中 · C1@N4(moving) · C2@N5(moving)",
+    "alerts": [],
+    "cars": {
+        "C1": {
+            "id": "C1",
+            "name": "小车1",
+            "status": "moving",
+            "pos": "L1",
+            "nxt": "N4",
+            "path": [
+                "L6",
+                "L9",
+                "L12"
+            ],
+            "task": null
+        },
+        "C2": {
+            "id": "C2",
+            "name": "小车2",
+            "status": "moving",
+            "pos": "L2",
+            "nxt": "N5",
+            "path": [
+                "L7",
+                "L12",
+                "L15"
+            ],
+            "task": null
+        }
     },
-    "C2": {
-      "id": "C2",
-      "name": "小车2",
-      "status": "moving",
-      "pos": "L5",
-      "task": {
-        "id": "T002",
-        "from": "N3",
-        "to": "N4"
-      }
+    "nodes": {
+        "N1": {
+            "status": "idle",
+            "name": "N1"
+        },
+        "N2": {
+            "status": "idle",
+            "name": "N2"
+        },
+        "N3": {
+            "status": "idle",
+            "name": "N3"
+        },
+        "N4": {
+            "status": "idle",
+            "name": "N4"
+        },
+        "N5": {
+            "status": "idle",
+            "name": "N5"
+        },
+        "N6": {
+            "status": "idle",
+            "name": "N6"
+        },
+        "N7": {
+            "status": "idle",
+            "name": "N7"
+        },
+        "N8": {
+            "status": "idle",
+            "name": "N8"
+        },
+        "N9": {
+            "status": "idle",
+            "name": "N9"
+        },
+        "N10": {
+            "status": "idle",
+            "name": "N10"
+        },
+        "N11": {
+            "status": "idle",
+            "name": "N11"
+        },
+        "N12": {
+            "status": "idle",
+            "name": "N12"
+        },
+        "N13": {
+            "status": "idle",
+            "name": "N13"
+        },
+        "N14": {
+            "status": "idle",
+            "name": "N14"
+        },
+        "N15": {
+            "status": "idle",
+            "name": "N15"
+        }
+    },
+    "edges": {
+        "L1": {
+            "status": "idle",
+            "weight": "10",
+            "from": "N1",
+            "to": "N4"
+        },
+        "L2": {
+            "status": "idle",
+            "weight": "10",
+            "from": "N2",
+            "to": "N5"
+        },
+        "L3": {
+            "status": "idle",
+            "weight": "10",
+            "from": "N3",
+            "to": "N6"
+        },
+        "L4": {
+            "status": "idle",
+            "weight": "10",
+            "from": "N4",
+            "to": "N5"
+        },
+        "L5": {
+            "status": "idle",
+            "weight": "10",
+            "from": "N5",
+            "to": "N6"
+        },
+        "L6": {
+            "status": "idle",
+            "weight": "10",
+            "from": "N4",
+            "to": "N7"
+        },
+        "L7": {
+            "status": "idle",
+            "weight": "10",
+            "from": "N5",
+            "to": "N8"
+        },
+        "L8": {
+            "status": "idle",
+            "weight": "10",
+            "from": "N6",
+            "to": "N9"
+        },
+        "L9": {
+            "status": "idle",
+            "weight": "10",
+            "from": "N7",
+            "to": "N8"
+        },
+        "L10": {
+            "status": "idle",
+            "weight": "10",
+            "from": "N8",
+            "to": "N9"
+        },
+        "L11": {
+            "status": "idle",
+            "weight": "10",
+            "from": "N7",
+            "to": "N10"
+        },
+        "L12": {
+            "status": "idle",
+            "weight": "10",
+            "from": "N8",
+            "to": "N11"
+        },
+        "L13": {
+            "status": "idle",
+            "weight": "10",
+            "from": "N9",
+            "to": "N12"
+        },
+        "L14": {
+            "status": "idle",
+            "weight": "10",
+            "from": "N10",
+            "to": "N11"
+        },
+        "L15": {
+            "status": "idle",
+            "weight": "10",
+            "from": "N11",
+            "to": "N12"
+        },
+        "L16": {
+            "status": "idle",
+            "weight": "10",
+            "from": "N10",
+            "to": "N13"
+        },
+        "L17": {
+            "status": "idle",
+            "weight": "10",
+            "from": "N11",
+            "to": "N14"
+        },
+        "L18": {
+            "status": "idle",
+            "weight": "10",
+            "from": "N12",
+            "to": "N15"
+        }
+    },
+    "logs": [],
+    "meta": {
+        "schema_version": "1.0",
+        "host": "agv-dispatcher",
+        "refresh_interval_ms": 2000
     }
-  },
-  "nodes": {
-    "N1": {"status": "idle"},
-    "N2": {"status": "idle"},
-    "N3": {"status": "idle"},
-    "N4": {"status": "idle"},
-    "N5": {"status": "idle"}
-  },
-  "edges": {
-    "L1": {"status": "fault_temp"},
-    "L2": {"status": "fault_repair"},
-    "L3": {"status": "occupied"},
-    "L4": {"status": "idle"},
-    "L5": {"status": "occupied"},
-    "L6": {"status": "idle"},
-    "L7": {"status": "idle"},
-    "L8": {"status": "blocked"}
-  },
-  "topology": {
-    "nodes": [
-      {"id": "N1", "label": "N1", "x": 80, "y": 80, "name": "仓储区"},
-      {"id": "N2", "label": "N2", "x": 240, "y": 80, "name": "分拣站A"},
-      {"id": "N3", "label": "N3", "x": 240, "y": 200, "name": "分拣站B"},
-      {"id": "N4", "label": "N4", "x": 240, "y": 320, "name": "装载区"},
-      {"id": "N5", "label": "N5", "x": 400, "y": 80, "name": "充电站"},
-      {"id": "N6", "label": "N6", "x": 400, "y": 200, "name": "充电站"},
-      {"id": "N7", "label": "N7", "x": 400, "y": 320, "name": "充电站"},
-      {"id": "N8", "label": "N8", "x": 560, "y": 80, "name": "充电站"},
-      {"id": "N9", "label": "N9", "x": 560, "y": 200, "name": "充电站"},
-      {"id": "N10", "label": "N10", "x": 560, "y": 320, "name": "充电站"}
-    ],
-    "edges": [
-      {"id": "L1", "from": "N1", "to": "N2",},
-      {"id": "L2", "from": "N2", "to": "N5"},
-      {"id": "L3", "from": "N2", "to": "N3"},
-      {"id": "L4", "from": "N3", "to": "N6"},
-      {"id": "L5", "from": "N3", "to": "N4"},
-      {"id": "L6", "from": "N4", "to": "N7"},
-      {"id": "L7", "from": "N5", "to": "N8"},
-      {"id": "L8", "from": "N5", "to": "N6"},
-      {"id": "L9", "from": "N6", "to": "N9"},
-      {"id": "L10", "from": "N6", "to": "N7"},
-      {"id": "L11", "from": "N7", "to": "N10"},
-      {"id": "L12", "from": "N8", "to": "N9"},
-      {"id": "L13", "from": "N9", "to": "N10"}
-    ]
-  },
-  "logs": [
-    {
-      "level": "info",
-      "msg": "C2 开始执行任务 T002 (N3→N4)",
-      "timestamp": "14:30:10"
-    }
-  ]
 }
 ```
 
@@ -884,6 +1017,12 @@ GET /api/status
 |---|---|---|---|
 |200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|none|Inline|
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|none|None|
+
+> [!NOTE]
+>
+> 下面内容原为自动生成，小车面向节点没有更新
+
+
 
 ### 返回数据结构
 

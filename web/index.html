@@ -448,8 +448,8 @@ let state = {
   nodes: {},
   edges: {},
   cars: {
-    C1:{id:'C1',name:'小车1',status:'idle',pos:'N1'},
-    C2:{id:'C2',name:'小车2',status:'moving',pos:'L5'},
+    C1:{id:'C1',name:'小车1',status:'idle',pos:'L2',nxt:'N5'},
+    C2:{id:'C2',name:'小车2',status:'moving',pos:'L5',nxt:'N6'},
   },
   selectedNode: null,
   selectedEdges: new Set(),
@@ -642,15 +642,17 @@ function renderSVG(){
     if(!car.pos) return;
     const col=CAR_COLORS[car.status]||'#888';
     let cx,cy;
-    if(car.pos.startsWith('N')){
-      const nd=getNode(car.pos); if(!nd)return;
-      cx=nd.x+32; cy=nd.y-22;
+    // pos 现在是边 ID，小车显示在边上
+    const ed=getEdge(car.pos); if(!ed)return;
+    const a=getNode(ed.from),b=getNode(ed.to);
+    let t=0.5;
+    if(car.nxt){
+      // 小车靠近 nxt 指定的节点（边有两个端点，位置偏向 nxt）
+      t = car.nxt === b.id ? 0.72 : 0.28;
     } else {
-      const ed=getEdge(car.pos); if(!ed)return;
-      const a=getNode(ed.from),b=getNode(ed.to);
-      const t=car.id==='C1'?0.36:0.64;
-      cx=a.x+(b.x-a.x)*t; cy=a.y+(b.y-a.y)*t;
+      t=car.id==='C1'?0.36:0.64;
     }
+    cx=a.x+(b.x-a.x)*t; cy=a.y+(b.y-a.y)*t;
     h+=`<rect x="${cx-16}" y="${cy-10}" width="32" height="20" rx="4" fill="${col}" stroke="#0d1117" stroke-width="1.5"/>`;
     h+=`<text x="${cx}" y="${cy+1.5}" text-anchor="middle" dominant-baseline="middle" font-family="Share Tech Mono,monospace" font-size="10" font-weight="700" fill="#fff" style="pointer-events:none">${car.id}</text>`;
     // moving indicator
@@ -719,7 +721,7 @@ function renderCars(){
         <div class="car-status-pill">${CAR_STATUS_CN[car.status]}</div>
       </div>
       <div class="car-meta">
-        <span>位置: ${car.pos||'--'}</span>
+        <span>位置: ${car.pos||'--'} → ${car.nxt||'--'}</span>
         ${car.task?.from && car.task?.to ? `<span>任务: ${car.task.from}→${car.task.to}</span>` : ''}
       </div>
     </div>`;
@@ -972,7 +974,7 @@ function generateMockJSON(){
     system_status: '正常运行',
     online_cars: 2,
     task_count: 3,
-    broadcast: `[${now}] 系统自动刷新 · C2 正在执行任务(N3→N4) · L8 禁止通行`,
+    broadcast: `[${now}] 系统自动刷新 · C2 在 L5 上靠近 N6 · L8 禁止通行`,
     alerts:[
       {level:'warn', msg:'L8 路径封闭，绕行建议：L2→L6→L5'}
     ],
@@ -980,16 +982,18 @@ function generateMockJSON(){
       C1:{
           id:'C1',
           name:'小车1',
-          status:'realloc',     // ⭐改状态
-          pos:'N2',
-          path:['L2','L8']      // ⭐加路径
+          status:'realloc',
+          pos:'L2',
+          nxt:'N5',
+          path:['L2','L8']
         },
       C2:{
           id:'C2',
           name:'小车2',
           status:'moving',
           pos:'L5',
-          path:['L3','L5','L6'],   // ⭐加这一行
+          nxt:'N6',
+          path:['L3','L5','L6'],
           task:{id:'T002',from:'N3',to:'N4'}
         }
     },
