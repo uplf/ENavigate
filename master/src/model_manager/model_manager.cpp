@@ -5,6 +5,8 @@
 #include <thread>
 #include <chrono>
 #include <vector>
+#include <sys/eventfd.h>
+#include <unistd.h>
 //请确保log_daemon正常运行
 #include "shm_manager.h"
 #include "mq_wrapper.h"
@@ -16,6 +18,23 @@
 const char* proc_name="model-mng";
 
 
+// ── eventfd：用于触发地图重置 ────────────────────────────────────────────────
+// 进程内其他模块调用 trigger_map_reset() 写入 1，
+// 主循环检测到后调用 reset_shm_map() 原地重写共享内存。
+static int g_reset_efd = -1;  ///< 全局 eventfd fd，由 main() 初始化
+
+/// 触发地图重置（可从进程内任意位置调用）
+inline void trigger_map_reset() {
+    if (g_reset_efd < 0) return;
+    uint64_t val = 1;
+    if (::write(g_reset_efd, &val, sizeof(val)) < 0) {
+        // 若计数器已达 UINT64_MAX-1（极不可能），忽略 EAGAIN
+        if (errno != EAGAIN) {
+            fprintf(stderr, "[model_manager] trigger_map_reset: write eventfd: %s\n",
+                    strerror(errno));
+        }
+    }
+}
 
 //初始状态 TODO
 void init_map(agv::ShmLayout* shm_ptr){
@@ -93,6 +112,29 @@ void init_map(agv::ShmLayout* shm_ptr){
     shm_ptr->map.nodes_[13] = agv::Node{14, 830, 190, agv::NodeStatus::IDLE, "N14", ""};
     shm_ptr->map.nodes_[14] = agv::Node{15, 830, 310, agv::NodeStatus::IDLE, "N15", ""};
 }
+
+// ── 地图重置函数（原地重写，不删除/重建 SHM）──────────────────────────────────
+/**
+ * reset_shm_map() — 在主循环检测到 eventfd 可读后调用。
+ *
+ * 保护策略：
+ *   - map / adj 用 SeqlockMWWriteGuard 包裹整段写操作，
+ *     读者（planner 等）会感知到 seq 变化并重试，不会读到中间态。
+ *   - bipaths 由 owner 维护且其他进程只读，
+ *     用同一个 map_write_mutex + map_lock 串联写即可（bipaths 无独立锁）。
+ *   - cars 不在此处重置（reset_shm_map 只负责地图部分）。
+ */
+void reset_shm_map(agv::ShmLayout* shm_ptr) {
+    LOG_INFO(proc_name, "reset_shm_map: begin");
+
+    {
+        agv::SeqlockMWWriteGuard guard(shm_ptr->map_write_mutex, shm_ptr->map_lock);
+	init_map(shm_ptr);	
+    }  // guard 析构：write_end + mutex unlock
+
+    LOG_INFO(proc_name, "reset_shm_map: done");
+}
+
 void init_car(agv::ShmLayout* shm_ptr){
     shm_ptr->cars.car_count_ = 2;
     //car id从1开始
@@ -148,7 +190,14 @@ int main(){
         LOG_ERROR(proc_name,"fail to create shm:%s",e.what());
         return 1;
     }
-    
+
+    // 创建 eventfd（EFD_NONBLOCK：主循环 read 时不阻塞）
+    int reset_efd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+    if (reset_efd < 0) {
+        LOG_ERROR(proc_name, "eventfd: %s", strerror(errno));
+        return 1;
+    }
+    g_reset_efd = reset_efd;  // 暴露给进程内触发函数
 
     //注册退出清理序列
     agv::SecureExit exit_seq(proc_name);
@@ -156,11 +205,14 @@ int main(){
     exit_seq.add_cleanup("unlink-mq",[&]{owner_mq.unlink_all();});
 
     //组建 poll 监听数组
-    constexpr int FD_SIG = 0;
+    constexpr int FD_SIG   = 0;
+    constexpr int FD_RESET = 1;
 
     struct pollfd fds[2];
     fds[FD_SIG].fd     = sig.get_fd();
     fds[FD_SIG].events = POLLIN;
+    fds[FD_RESET].fd     = reset_efd;
+    fds[FD_RESET].events = POLLIN;
 
     LOG_INFO(proc_name,"enter-poll-loop");
 
@@ -180,7 +232,21 @@ int main(){
             continue;
         }
 
+        // eventfd 触发：消费计数后执行地图重置
+        if (fds[FD_RESET].revents & POLLIN) {
+            uint64_t cnt = 0;
+            // 一次性读取并清零计数器（EFD_NONBLOCK，不会阻塞）
+            if (::read(reset_efd, &cnt, sizeof(cnt)) == sizeof(cnt)) {
+                LOG_INFO(proc_name, "reset triggered (cnt=%llu)",
+                         (unsigned long long)cnt);
+            }
+            reset_shm_map(owner_shm.ptr());
+            continue;
+        }
+
     }
+    ::close(reset_efd);
+    g_reset_efd = -1;
     LOG_INFO(proc_name,"shutdown-requested");
     exit_seq.run(200);
     LOG_INFO(proc_name,"shutdown-finished");
