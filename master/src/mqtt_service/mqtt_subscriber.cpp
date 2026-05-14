@@ -116,8 +116,8 @@ static CarEvent parse_event(const char* topic, const char* payload) {
         LOG_INFO(PROC_NAME,"handling obstacle payload-name:%s, name:%s",payload,kind_val);
         if (kind_val && vlen < AGC_MAX_LABEL-1) {
             char buf[AGC_MAX_LABEL];
-            memcpy(buf, kind_val+1, vlen-2);
-            buf[vlen-2] = '\0'; 
+            memcpy(buf, kind_val+1, vlen-1);
+            buf[vlen-1] = '\0'; 
             ev.param = std::string(buf);
             ev.is_temporary = is_temp(buf);
             ev.pass_th = (kind_val[0]=='n')?false:true;  // 初始化为 false
@@ -133,9 +133,6 @@ static CarEvent parse_event(const char* topic, const char* payload) {
         ev.type = EventType::kINFO;
     } else if(strncmp(type_val, "POSITION", vlen) == 0){
         ev.type = EventType::kPOSITION;
-        //
-    } else {
-        LOG_ERROR(PROC_NAME,"unknown event type in json");
         const char* kind_val = json_get(payload, "param", &vlen);
         //kind_val字段的内容格式：“12-23”，下面的程序将前面的数字和后面的数字分别放到val_param和val_param2中
         while((*kind_val<'0'||*kind_val>'9')&&*kind_val!='\0')++kind_val;
@@ -152,6 +149,9 @@ static CarEvent parse_event(const char* topic, const char* payload) {
             ++kind_val;
         }
         ev.val_param2=tmp;
+    } else {
+        LOG_ERROR(PROC_NAME,"unknown event type in json");
+
     }
     //涉及到数字的操作
     //if (node_val) {

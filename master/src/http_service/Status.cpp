@@ -144,7 +144,7 @@ static void build_status_json(const agv::MapData& map,
         if(e.id>bipaths.bipath_count_)continue;//双向边只显示一次，避免重复显示A-B和B-A两条边
         if (i > 0) append(out, cap, pos, ",");
 
-        if (e.status == EdgeStatus::FAULT_TEMP || e.status == EdgeStatus::FAULT_REPAIR) {
+        if (e.status == agv::EdgeStatus::FAULT_TEMP || e.status == agv::EdgeStatus::FAULT_REPAIR) {
             append(out, cap, pos,
                 "\"L%d\":{\"status\":\"%s\",\"weight\":\"%d\",\"from\":\"N%u\",\"to\":\"N%u\",\"errType\":\"%s\"}",
                 e.id,

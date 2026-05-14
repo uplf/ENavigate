@@ -260,7 +260,7 @@ struct MqttPublishMsg {
                     snprintf(payload_buf, payload_buf_size, "{\"type\":\"ARRIVE\",\"param\":\"\"}");
                     break;
                 case MqttCmdType::CMD_ori:
-                    snprintf(payload_buf, payload_buf_size, "{\"type\":\"OBSTACLE\",\"param\":\"yTEST\"}");
+                    snprintf(payload_buf, payload_buf_size, "{\"type\":\"OBSTACLE\",\"param\":\"yapple\"}");
                     break;
                 case MqttCmdType::QUERY:
                     snprintf(payload_buf, payload_buf_size, "{\"type\":\"OBSTACLE\",\"param\":\"nTEST\"}");

@@ -613,10 +613,14 @@ function renderSVG(){
                   opacity="0.95" pointer-events="none"/>`;
     });
     const mx=(a.x+b.x)/2, my=(a.y+b.y)/2;
+    const errType = state.edges[e.id]?.errType || state.edges[e.id]?.err_type || '';
+    const errLabel = errType ? `-${errType}` : '';
+    const labelText = `${e.id}${errLabel}`;
+    // labelRectWidth: 每字符 ~6px (9pt monospace) + 内边距 16px
+    const labelW = Math.max(24, labelText.length * 6 + 16);
     const bg = sel?'#1a4a23':'#21262d';
-    h+=`<rect x="${mx-12}" y="${my-9}" width="24" height="16" rx="4" fill="${bg}" stroke="${labelCol}" stroke-width="1" style="cursor:pointer" onclick="toggleEdge('${e.id}')"/>`;
-    const errLabel = state.edges[e.id]?.errType ? `-${state.edges[e.id].errType}` : '';
-    h+=`<text x="${mx}" y="${my+1.5}" text-anchor="middle" dominant-baseline="middle" font-size="9" font-family="Share Tech Mono,monospace" fill="${labelCol}" style="cursor:pointer;pointer-events:none">${e.id}${errLabel}</text>`;
+    h+=`<rect x="${mx-labelW/2}" y="${my-9}" width="${labelW}" height="16" rx="4" fill="${bg}" stroke="${labelCol}" stroke-width="1" style="cursor:pointer" onclick="toggleEdge('${e.id}')"/>`;
+    h+=`<text x="${mx}" y="${my+1.5}" text-anchor="middle" dominant-baseline="middle" font-size="9" font-family="Share Tech Mono,monospace" fill="${labelCol}" style="cursor:pointer;pointer-events:none">${labelText}</text>`;
   });
 
   // defs (filters)
@@ -697,6 +701,12 @@ function updateRepairButton(){
     }
   }
   btn.disabled = !hasRepairFault;
+}
+
+function clearSelection(){
+  state.selectedNode = null;
+  state.selectedEdges.clear();
+  updateSelInfo(); renderSVG();
 }
 
 function selectAllEdges(){
@@ -799,6 +809,7 @@ function doAssign(){
   addLog('info', `[请求] ${label}，等待服务器响应...`);
   setBroadcast(`[请求中] ${label}`);
   toast('请求已发送');
+  clearSelection();
   postAPI('/api/assign', { car: state.selectedCar, target: state.selectedNode }, label);
 }
 function doCancel(){
@@ -807,6 +818,7 @@ function doCancel(){
   addLog('info', `[请求] ${label}，等待服务器响应...`);
   setBroadcast(`[请求中] ${label}`);
   toast('请求已发送');
+  clearSelection();
   postAPI('/api/cancel', { car: state.selectedCar }, label);
 }
 function doBan(){
@@ -818,6 +830,7 @@ function doBan(){
   addLog('info', `[请求] ${label}，等待服务器响应...`);
   setBroadcast(`[请求中] 封闭：${allTargets.join('、')}`);
   toast('请求已发送');
+  clearSelection();
   postAPI('/api/ban', { edges, nodes }, label);
 }
 function doAllow(){
@@ -829,6 +842,7 @@ function doAllow(){
   addLog('info', `[请求] ${label}，等待服务器响应...`);
   setBroadcast(`[请求中] 开放：${allTargets.join('、')}`);
   toast('请求已发送');
+  clearSelection();
   postAPI('/api/access', { edges, nodes }, label);
 }
 function doRepair(){
@@ -839,6 +853,7 @@ function doRepair(){
   addLog('info', `[请求] ${label}，等待服务器响应...`);
   setBroadcast(`[请求中] 修复：${repairTargets.join('、')}`);
   toast('请求已发送');
+  clearSelection();
   postAPI('/api/repair', { edges: repairTargets }, label);
 }
 function doRefresh(){
