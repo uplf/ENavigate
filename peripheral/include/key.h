@@ -3,16 +3,26 @@
 
 #include <Arduino.h>
 
-// 定义引脚宏
+
 #define KEY1 36
 #define KEY2 37
 #define KEY3 38
 
-// 外部标志位，用于在主程序中检测状态
-extern volatile bool key1_flag;
-extern volatile bool key2_flag;
-extern volatile bool key3_flag;
+/* =========================================================
+ *                      初始化
+ * ========================================================= */
 
+/*
+ * 注意：
+ * FreeRTOS版本中：
+ *
+ * 1. key模块不再负责 attachInterrupt
+ * 2. key模块不再保存 flag
+ * 3. 中断统一由 main.cpp 管理
+ *
+ * 原因：
+ * 防止重复注册ISR
+ */
 void key_init(void);
 
 #endif

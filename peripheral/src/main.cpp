@@ -1,339 +1,481 @@
 #include <Arduino.h>
-#include "key.h"
-#include <U8g2lib.h>
+#include <WiFi.h>
 #include <Wire.h>
+#include <U8g2lib.h>
+
 #include "drive.h"
 #include "encoder.h"
+#include "key.h"
 #include "mqtt_handler.h"
+
 
 #define SDA_PIN 4
 #define SCL_PIN 5
+
 #define LED_PIN 35
+
 #define RXPIN 18
 #define TXPIN 17
 
+#define CONTROL_TASK_PERIOD_MS 10
+#define DISPLAY_TASK_PERIOD_MS 200
+#define MQTT_TASK_PERIOD_MS 20
+#define SAFETY_TASK_PERIOD_MS 100
 
-// 函数声明
-void initDisplay();
-void updateDisplay();
-void initUART();
-void readSerial1Data();
-void sendData(int msg);
-void initWiFi();
-
-
-bool led_state = LOW;
-bool led_status = false;
-unsigned long last_display = 0;
-const unsigned long display_interval = 100;
-
-// WiFi 信息
 const char *WIFI_SSID = "happywaming";
 const char *WIFI_PASSWORD = "happywaming2026";
 
+U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0,U8X8_PIN_NONE);
 
-// 状态机定义
 enum State
 {
-  STATE_IDLE,   // 静止状态
-  STATE_FOLLOW, // 循线状态
-  STATE_TURN    // 转向状态
+  STATE_IDLE,
+  STATE_FOLLOW,
+  STATE_TURN
 };
 
-State currentState = STATE_IDLE;
 
-// 巡线控制参数
-int dx = 0;            // 偏移量
-int node_flag = 0;     // 路口标志
-int last_node_flag = 0;
-int theta = 90; // 手动定义的转向角度量（示例：90度）
-float Kp = 0.3;        // 循线比例系数，根据实际效果调整
-int num = 0;
-int number = 0;
+typedef struct
+{
+  int dx;
+  int node_flag;
+  char info[32];
 
+  uint32_t timestamp;
+} VisionData_t;
+
+typedef struct
+{
+  State currentState;
+
+  int dx;
+  int node_flag;
+  int encoder1;
+  int encoder2;
+  Orient orient;
+
+  bool wifiConnected;
+
+} SystemStatus_t;
+
+// 全局系统状态
+static SystemStatus_t g_systemStatus;
+
+
+
+QueueHandle_t g_visionQueue;
+QueueHandle_t g_commandQueue;
+
+SemaphoreHandle_t g_statusMutex;
+SemaphoreHandle_t g_keysem;
+
+static char rxBuffer[64];
+static int rxIndex = 0;
+
+
+float Kp = 0.3f;
 bool isturn = false;
+int last_node_flag = 0;
 
-// 用于接收和显示字符串
-char rxBuffer[64] = "";   // 最多存63个字符，最后一个留给 '\0'
-int rxIndex = 0;          // 当前存到第几个字符
-bool newDataReady = false;
-char infoBuffer[32] = "None";
-bool pause_flag = false;
-// OLED 实例化 (型号SH1106 大小128x64)
-U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
 
-void setup() {
-  // LED及按键初始化
+
+void initHardware();
+void initDisplay();
+void initWIFI();
+
+
+//Task
+void ControlTask(void *pvParameters);
+void VisionTask(void *pvParameters);
+void MQTTTask(void *pvParameters);
+void DisplayTask(void *pvParameters);
+void SafetyTask(void *pvParameters);
+void KeyTask(void *pvParameters);
+
+//ISR
+void IRAM_ATTR key1_isr();
+void IRAM_ATTR key2_isr();
+
+
+
+void setup()
+{
+  Serial.begin(115200);
+
+  initHardware();
+
+  g_visionQueue = xQueueCreate(5,sizeof(VisionData_t));
+
+  g_commandQueue = xQueueCreate(5,sizeof(Cmd_t));
+
+  g_statusMutex = xSemaphoreCreateMutex();
+
+  g_keysem = xSemaphoreCreateBinary();
+
+  if (!g_visionQueue ||!g_commandQueue ||!g_statusMutex ||!g_keysem)
+  {
+    Serial.println("FreeRTOS object create failed");
+
+    while (1)
+    {
+      delay(1000);
+    }
+  }
+
+  //核心控制任务,最高优先级
+  xTaskCreatePinnedToCore(ControlTask,"ControlTask",4096,NULL,5,NULL,1);
+
+  //K230串口数据接收
+  xTaskCreatePinnedToCore(VisionTask,"VisionTask",4096,NULL,4,NULL,1);
+
+  //MQTT 放Core0避免影响实时控制
+  xTaskCreatePinnedToCore(MQTTTask,"MQTTTask",8192,NULL,3,NULL,0);
+
+  //OLED刷新任务 最低优先级
+  xTaskCreatePinnedToCore(DisplayTask,"DisplayTask",4096,NULL,1,NULL,1);
+
+  //安全监控任务
+  xTaskCreatePinnedToCore(SafetyTask,"SafetyTask",4096,NULL,2,NULL,1);
+
+  //按键处理任务
+  xTaskCreatePinnedToCore(KeyTask,"KeyTask",2048,NULL,2,NULL,1);
+
+}
+
+void loop()
+{
+  vTaskDelete(NULL);
+}
+
+
+void initHardware()
+{
   pinMode(LED_PIN, OUTPUT);
+
   encoder_init();
 
   key_init();
 
-  // 串口初始化
-  initUART();
-  // 电机驱动初始化
   drive_init();
-
-  // 初始化显示屏
-  initDisplay();
 
   resetEncoders();
 
-  initWiFi();
+  Serial1.begin(115200,SERIAL_8N1,RXPIN,TXPIN);
+
+  initDisplay();
+
+  initWIFI();
+
   initMQTT();
+
+  attachInterrupt(digitalPinToInterrupt(KEY1),key1_isr,FALLING);
+  attachInterrupt(digitalPinToInterrupt(KEY2),key2_isr,FALLING);
+  // attachInterrupt(digitalPinToInterrupt(KEY3),key3_isr,FALLING);
 }
 
-void loop() {
-  // 接收串口1字符串
-  // handleMQTTLoop();
-
-
-  readSerial1Data();
-  
-
-  if (key1_flag){
-     key1_flag = false;
-    // if (currentState == STATE_IDLE){
-    //   currentState = STATE_FOLLOW;
-    // }
-    // else{
-    //   currentState = STATE_IDLE;
-    //   drive_setPWM34(0, 0);      // 立即强制物理停止
-    // }
-    Orient = O_RIGHT;
-  }
-  if(key2_flag){
-    key2_flag = false;
-    currentState = STATE_TURN;
-  }
-
-  // 状态机：只有当串口解析出新数据时才处理
-  // 确保控制频率与传感器数据频率同步，减少抖动
-  if (newDataReady||pcDataReady){
-    // if(num ==2){
-    //   Action = A_UTURN;
-    //   Orient = O_LEFT;
-    //   num = 0;  
-
-    //     }
-    if(pcDataReady){
-      switch (Action){
-        case A_PAUSE:
-          drive_setPWM34(0, 0);      // 停止
-          currentState = STATE_IDLE; // 切换到空闲状态
-          pause_flag = true;
-          break;
-        case A_PROCESS:
-          if (currentState == STATE_IDLE){
-            currentState = STATE_FOLLOW; // 恢复巡线
-            pause_flag = false;
-          }
-          else{
-            mqtt_send_info("Already in process");
-          }
-          break;
-        case A_UTURN:
-          Turn(180);       // 执行掉头
-          currentState = STATE_TURN; // 切换到转向状态
-          drive_setPWM34(-40, 40); // 掉头时左右反转
-          break;
-        default:break;
-      }
-      Action = A_NONE; // 重置指令
-      pcDataReady = false;
-    }
-    if(newDataReady){
-      // 根据当前状态执行相应逻辑
-      switch (currentState){
-        case STATE_IDLE:
-          if((Orient != O_NONE)&&(!pause_flag)){
-            mqtt_send_info("Start Moving");
-            currentState = STATE_FOLLOW;
-          }
-          break;
-
-        case STATE_FOLLOW:
-          drive_DIFFsetPWM34(-dx * Kp);
-          if (node_flag == 1 && last_node_flag == 0){
-            resetEncoders(); // 到达路口，重置编码器计数
-            num++;
-            isturn = true; // 标记正在转向
-          }
-          if(getEncoder1Count() > 750&&getEncoder2Count() > 750&&isturn){ 
-            isturn = false; // 转向完成
-            mqtt_send_arrive();
-            switch (Orient){
-              case O_LEFT:
-                Turn(90);
-                drive_setPWM34(40, -40);
-                currentState = STATE_TURN;
-                break;
-
-              case O_RIGHT:
-                Turn(-90);
-                drive_setPWM34(-40, 40);
-                currentState = STATE_TURN;
-                break;
-
-              case O_STRAIGHT:
-                  // 直行不转向，保持当前PWM，通常不需要进入 TURN 状态
-                  // currentState = STATE_DRIVE; // 保持巡线或行驶状态
-                break;
-
-              case O_ARRIVED:
-                drive_setPWM34(0, 0);      // 按照协议要求停车[cite: 1]
-                currentState = STATE_IDLE; // 切换到空闲/停止状态
-                break;
-
-              default:
-              // 协议要求：如果在路口没有收到信息（即 Orient 为空），请停车并发送 INFO[cite: 1]
-                drive_setPWM34(0, 0);
-                mqtt_send_info("No command at node");
-                currentState = STATE_IDLE;
-                break;
-            }
-            Orient = O_NONE; // 重置指令，防止重复触发
-          }
-          break;
-
-        case STATE_TURN:
-          if(checkTurnDone()){
-            currentState = STATE_FOLLOW; // 回到循线状态
-          }
-          break;
-      }
-      last_node_flag = node_flag;
-      newDataReady = false;
-    }
-  }
-
-
-  
-  // 刷新 OLED 内容
-  if (millis() - last_display > display_interval){
-    updateDisplay();
-    last_display = millis();
-  }
-
-
-}
-
-// ------------------------ 函数定义 ------------------------
-
-// 初始化 OLED 显示屏
-void initDisplay() {
+void initDisplay()
+{
   Wire.begin(SDA_PIN, SCL_PIN);
   u8g2.begin();
   u8g2.enableUTF8Print();
 }
 
-// OLED显示
-void updateDisplay() {
-  u8g2.clearBuffer();
 
-  // 画框
-  u8g2.drawFrame(0, 0, 128, 64);
-
-  // 显示字符串
-  u8g2.setFont(u8g2_font_6x12_tf);
-  u8g2.setCursor(5, 12);
-  u8g2.print("Status: ");
-  if (currentState == STATE_IDLE)
-    u8g2.print("IDLE");
-  else if (currentState == STATE_FOLLOW)
-    u8g2.print("FOLLOW");
-  else
-    u8g2.print("TURN");
-
-  // 显示数据
-  u8g2.setCursor(5, 28);
-  // u8g2.printf("dx: %d", dx);
-  u8g2.printf("Orient: %d", Orient);
-  u8g2.setCursor(5, 44);
-  // u8g2.printf("node: %d", node_flag);
-  u8g2.printf("conter1: %ld", getEncoder1Count());
-
-  u8g2.setCursor(5, 60);
-  // u8g2.print("Info: ");
-  // u8g2.print(infoBuffer);
-  u8g2.printf("counter2: %ld",getEncoder2Count());
-
-  u8g2.sendBuffer();//刷新oled显示
-}
-
-// 串口初始化
-void initUART() {
-  Serial.begin(115200);
-  Serial1.begin(115200, SERIAL_8N1, RXPIN, TXPIN); // GPIO18作为RX，GPIO17作为TX
-}
-
-// 接收 Serial1 字符串
-void readSerial1Data() {
-  while (Serial1.available()) {
-    char ch = Serial1.read();
-    // Serial.println(ch);
-
-    // 遇到回车或换行，表示一帧数据结束
-    if (ch == '\n' || ch == '\r') {
-      if (rxIndex > 0) {
-        rxBuffer[rxIndex] = '\0';   // 字符串结束符
-        rxIndex = 0;                // 准备下一次接收
-        if (sscanf(rxBuffer, "%d,%d,%31s", &dx, &node_flag, infoBuffer) >= 2){
-          newDataReady = true;
-        }
-
-        // 调试输出到电脑串口
-        // Serial.print("Received: ");
-        // Serial.println(rxBuffer);
-      }
-    }
-    else {
-      // 防止数组越界
-      if (rxIndex < sizeof(rxBuffer) - 1) {
-        rxBuffer[rxIndex++] = ch;
-      }
-      else {
-        // 缓冲区满了，强制结束
-        rxBuffer[rxIndex] = '\0';
-        rxIndex = 0;
-      }
-    }
-  }
-}
-
-// 串口发送函数
-void sendData(int msg)
-{
- 
-  Serial1.print(msg);      // 发给外设
-  Serial1.print("\r\n");   // 自动换行（很多串口设备需要）
-}
-
-void initWiFi()
+void initWIFI()
 {
   WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-
-  int retry = 0;
-
-  while (WiFi.status() != WL_CONNECTED)
-  {
-    u8g2.clearBuffer();
-    u8g2.setFont(u8g2_font_6x12_tf);
-    u8g2.drawStr(0, 10, "Connecting WiFi...");
-    u8g2.sendBuffer();
-
-    delay(500);
-    retry++;
-
-    if (retry > 40)
-    {
-      strcpy(netBuffer, "WiFi Failed");
-      return;
-    }
-  }
-
-  strcpy(netBuffer, "WiFi OK");
+  WiFi.begin(WIFI_SSID,WIFI_PASSWORD);
 }
 
 
+void ControlTask(void *pvParameters)
+{
+  TickType_t xLastWakeTime;
+
+  xLastWakeTime = xTaskGetTickCount();
+
+  VisionData_t visionData;
+
+  Cmd_t command;
+
+  State currentState = STATE_IDLE;
+
+  Orient orient = O_NONE;
+
+  while (1)
+  {
+    //接收视觉
+    while (xQueueReceive(g_visionQueue,&visionData,0) == pdTRUE){
+      xSemaphoreTake(g_statusMutex,portMAX_DELAY);
+
+      g_systemStatus.dx = visionData.dx;
+      g_systemStatus.node_flag =visionData.node_flag;
+
+      xSemaphoreGive(g_statusMutex);
+    }
+
+    //接收mqtt
+    while (xQueueReceive(g_commandQueue,&command,0) == pdTRUE){
+      switch (command.action){
+      case A_PAUSE:
+        drive_setPWM34(0, 0);
+        currentState = STATE_IDLE;
+        break;
+
+      case A_PROCESS:
+        if (currentState == STATE_IDLE)
+          currentState = STATE_FOLLOW;
+        break;
+
+      case A_UTURN:
+        Turn(180);
+        drive_setPWM34(-40, 40);
+        currentState = STATE_TURN;
+        break;
+
+      default:break;
+      }
+
+      orient = command.orient;
+    }
+
+    switch (currentState){
+    case STATE_IDLE:
+      break;
+
+    case STATE_FOLLOW:{
+      int dx = visionData.dx;
+
+      drive_DIFFsetPWM34(-dx * Kp);
+
+      if (visionData.node_flag == 1 &&last_node_flag == 0){
+        resetEncoders();
+        isturn = true;
+        mqtt_send_arrive();
+      }
+
+      if (getEncoder1Count() > 750 &&getEncoder2Count() > 750 &&isturn){
+        isturn = false;
+        switch (orient){
+        case O_LEFT:
+          Turn(90);
+          drive_setPWM34(40, -40);
+          currentState = STATE_TURN;
+          break;
+
+        case O_RIGHT:
+          Turn(-90);
+          drive_setPWM34(-40, 40);
+          currentState = STATE_TURN;
+          break;
+
+        case O_STRAIGHT:
+          break;
+
+        case O_ARRIVED:
+          drive_setPWM34(0, 0);
+          currentState = STATE_IDLE;
+          break;
+
+        default:
+          drive_setPWM34(0, 0);
+          mqtt_send_info("No command at node");
+          currentState = STATE_IDLE;
+          break;
+        }
+        orient = O_NONE;
+      }
+
+      last_node_flag =
+          visionData.node_flag;
+
+      break;
+    }
+
+    case STATE_TURN:
+      if (checkTurnDone())
+      {
+        currentState = STATE_FOLLOW;
+      }
+
+      break;
+    }
+
+
+    xSemaphoreTake(g_statusMutex,portMAX_DELAY);
+
+    g_systemStatus.currentState = currentState;
+
+    g_systemStatus.encoder1 = getEncoder1Count();
+
+    g_systemStatus.encoder2 = getEncoder2Count();
+
+    g_systemStatus.orient =orient;
+
+    xSemaphoreGive(g_statusMutex);
+
+    vTaskDelayUntil(&xLastWakeTime,pdMS_TO_TICKS(CONTROL_TASK_PERIOD_MS));
+  }
+}
+
+
+void VisionTask(void *pvParameters)
+{
+  VisionData_t visionData;
+
+  while (1)
+  {
+    while (Serial1.available()){
+      char ch = Serial1.read();
+
+      if (ch == '\n' || ch == '\r'){
+        if (rxIndex > 0){
+          rxBuffer[rxIndex] = '\0';
+          rxIndex = 0;
+          if (sscanf(rxBuffer,"%d,%d,%31s",&visionData.dx,&visionData.node_flag,visionData.info) >= 2){
+            visionData.timestamp =millis();
+
+
+            xQueueSend(g_visionQueue,&visionData,0);
+          }
+        }
+      }
+      else{
+        if (rxIndex <sizeof(rxBuffer) - 1){
+          rxBuffer[rxIndex++] = ch;
+        }
+        else{
+          rxIndex = 0;
+        }
+      }
+    }
+
+    vTaskDelay(pdMS_TO_TICKS(2));
+  }
+}
+
+
+void MQTTTask(void *pvParameters)
+{
+  while (1)
+  {
+
+    bool wifiOK =(WiFi.status() == WL_CONNECTED);
+
+    xSemaphoreTake(g_statusMutex,portMAX_DELAY);
+
+    g_systemStatus.wifiConnected = wifiOK;
+
+    xSemaphoreGive(g_statusMutex);
+
+    if (wifiOK)
+    {
+      handleMQTTLoop();
+    }
+
+    vTaskDelay(pdMS_TO_TICKS(MQTT_TASK_PERIOD_MS));
+  }
+}
+
+
+void DisplayTask(void *pvParameters)
+{
+  SystemStatus_t localStatus;
+
+  while (1)
+  {
+
+    xSemaphoreTake(g_statusMutex,portMAX_DELAY);
+
+    memcpy(&localStatus,&g_systemStatus,sizeof(SystemStatus_t));
+
+    xSemaphoreGive(g_statusMutex);
+
+    u8g2.clearBuffer();
+    u8g2.drawFrame(0, 0, 128, 64);
+    u8g2.setFont(u8g2_font_6x12_tf);
+    u8g2.setCursor(5, 12);
+
+    u8g2.print("State: ");
+    switch (localStatus.currentState)
+    {
+    case STATE_IDLE:
+      u8g2.print("IDLE");
+      break;
+
+    case STATE_FOLLOW:
+      u8g2.print("FOLLOW");
+      break;
+
+    case STATE_TURN:
+      u8g2.print("TURN");
+      break;
+    }
+
+    u8g2.setCursor(5, 28);
+
+    u8g2.printf("dx:%d node:%d",localStatus.dx,localStatus.node_flag);
+
+    u8g2.setCursor(5, 44);
+
+    u8g2.printf("E1:%d",localStatus.encoder1);
+
+    u8g2.setCursor(5, 60);
+
+    u8g2.printf("E2:%d",localStatus.encoder2);
+
+    u8g2.sendBuffer();
+
+    vTaskDelay(pdMS_TO_TICKS(DISPLAY_TASK_PERIOD_MS));
+  }
+}
+
+
+void SafetyTask(void *pvParameters)
+{
+  while (1)
+  {
+    /*
+     * 可加入：
+     * 1. 通信超时停车
+     * 2. 任务心跳检测
+     * 3. CPU占用统计
+     * 4. 编码器异常检测
+     * 5. 电机保护
+     */
+
+    vTaskDelay(pdMS_TO_TICKS(SAFETY_TASK_PERIOD_MS));
+  }
+}
+
+
+
+void KeyTask(void *pvParameters)
+{
+  while (1)
+  {
+    if (xSemaphoreTake(g_keysem,portMAX_DELAY) == pdTRUE)
+    {
+      Cmd_t cmd;
+      cmd.action = A_PROCESS;
+      cmd.orient = O_RIGHT;
+      xQueueSend(g_commandQueue,&cmd,0);
+    }
+
+  }
+}
+
+
+void IRAM_ATTR key1_isr()
+{
+  BaseType_t Woken = pdFALSE;
+  xSemaphoreGiveFromISR(g_keysem,&Woken);
+  portYIELD_FROM_ISR(Woken);
+}
+
+void IRAM_ATTR key2_isr()
+{
+  BaseType_t Woken = pdFALSE;
+  xSemaphoreGiveFromISR(g_keysem,&Woken);
+  portYIELD_FROM_ISR(Woken);
+}

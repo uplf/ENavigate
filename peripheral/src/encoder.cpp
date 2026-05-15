@@ -7,6 +7,7 @@ long targetCount1 = 0;
 long targetCount2 = 0;
 bool isTurning = false;
 
+portMUX_TYPE encoderMux = portMUX_INITIALIZER_UNLOCKED;
 // --- 中断服务函数 (ISR) ---
 // 放在 IRAM 中以确保 ESP32 高速响应
 void IRAM_ATTR isr1()
@@ -48,13 +49,27 @@ void encoder_init()
     attachInterrupt(digitalPinToInterrupt(E2A), isr2, CHANGE);
 }
 
-long getEncoder1Count() { return count1; }
-long getEncoder2Count() { return count2; }
+long getEncoder1Count() {
+    long temp;
+    portENTER_CRITICAL(&encoderMux);
+    temp = count1;
+    portEXIT_CRITICAL(&encoderMux);
+    return temp;
+}
+long getEncoder2Count() {
+    long temp;
+    portENTER_CRITICAL(&encoderMux);
+    temp = count2; 
+    portEXIT_CRITICAL(&encoderMux);
+    return temp;
+}
 
 void resetEncoders()
 {
+    portENTER_CRITICAL(&encoderMux);
     count1 = 0;
     count2 = 0;
+    portEXIT_CRITICAL(&encoderMux);
 }
 
 void Turn(float angle)

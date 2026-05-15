@@ -1,28 +1,26 @@
 #include "mqtt_handler.h"
 
-// ======================== 配置参数 ========================
-// MQTT 信息[cite: 1]
+#include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
+
+
+extern QueueHandle_t g_commandQueue;
+
+
 const char *MQTT_SERVER = "myxiaxiais.art";
 const int MQTT_PORT = 1883;
 
-// 小车1 配置[cite: 1]
-const char *MQTT_CLIENT_ID = "esp32_car1_001"; // 确保不和 MQTTX 冲突
-const char *MQTT_USERNAME = "agv";             // 按需保留或留空，文档说不需要认证[cite: 1]
-const char *MQTT_PASSWORD = "123456";          // 按需保留或留空
+const char *MQTT_CLIENT_ID ="esp32_car1_001";
+const char *MQTT_USERNAME = "agv";
+const char *MQTT_PASSWORD = "123456";
 
-const char *MQTT_PUB_TOPIC = "car/1/event"; // 发送主题[cite: 1]
-const char *MQTT_SUB_TOPIC = "car/1/cmd";   // 接收主题[cite: 1]
+const char *MQTT_PUB_TOPIC ="car/1/event";
+const char *MQTT_SUB_TOPIC ="car/1/cmd";
 
-// ======================== 实例与全局变量 ========================
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
 char netBuffer[64] = "No MQTT Data";
 
-volatile CarOrient Orient = O_NONE;
-volatile CarAction Action = A_NONE;
-volatile bool pcDataReady = false;
-
-// ======================== 接收(Subscribe)回调 ========================
 void mqttCallback(char *topic, byte *payload, unsigned int length)
 {
     // 将 payload 转换为字符串
@@ -50,96 +48,100 @@ void mqttCallback(char *topic, byte *payload, unsigned int length)
     String type = doc["type"].as<String>();
     String param = doc["param"].as<String>();
 
-    // ---------- 根据协议路由指令[cite: 1] ----------
+
+
+    Cmd_t cmd;
+
+    cmd.action = A_NONE;
+
+    cmd.orient = O_NONE;
+
+
     if (type == "ORIENT")
     {
-        // 直角/直行的转向指引[cite: 1]
-        if (param == "STRAIGHT")  Orient = O_STRAIGHT;
-        else if (param == "LEFT")   Orient = O_LEFT;
-        else if (param == "RIGHT") Orient = O_RIGHT;
-        else if (param == "ARRIVED") Orient = O_ARRIVED;
-        else Orient = O_NONE;
-        pcDataReady = true;
+        if (param == "STRAIGHT") cmd.orient = O_STRAIGHT;
+        else if (param == "LEFT") cmd.orient = O_LEFT;
+        else if (param == "RIGHT") cmd.orient = O_RIGHT;
+        else if (param == "ARRIVED")cmd.orient = O_ARRIVED;
 
+        xQueueSend(g_commandQueue,&cmd,0);
     }
-    else if (type == "ANGLE")
-    {
-        // 带角度的转向指引 - 暂不开发[cite: 1]
-    }
-    else if (type == "QUERY")
-    {
-        // 主机查询信息 - 暂不开发[cite: 1]
-        // 预期收到 STATUS 或 LOG[cite: 1]
-    }
+
+
     else if (type == "ACTION")
     {
-        // 主机行动命令[cite: 1]
-        if (param == "PAUSE") Action = A_PAUSE;
-        
-        else if (param == "PROCESS") Action = A_PROCESS;
-        else if (param == "UTURN") Action = A_UTURN;
-        else if (param == "REBOOT")
-        {
-        }
-        else Action = A_NONE;
-        pcDataReady = true;
+        if (param == "PAUSE")cmd.action = A_PAUSE;
+        else if (param == "PROCESS")cmd.action = A_PROCESS;
+        else if (param == "UTURN")cmd.action = A_UTURN;
+
+        xQueueSend(g_commandQueue,&cmd,0);
     }
 }
 
-// ======================== 初始化与连接 ========================
+
+
 void initMQTT()
 {
     mqttClient.setServer(MQTT_SERVER, MQTT_PORT);
     mqttClient.setCallback(mqttCallback);
-    // 心跳设为30s[cite: 1]
+    // 心跳设为30s
     mqttClient.setKeepAlive(30);
 }
 
+
+
 void reconnectMQTT()
 {
-    while (!mqttClient.connected())
+
+    if (mqttClient.connected())
+        return;
+    
+
+    static uint32_t lastReconnect = 0;
+    if (millis() - lastReconnect < 3000)
     {
+        return;
+    }
 
+    lastReconnect = millis();
 
-        // 尝试连接
-        if (mqttClient.connect(MQTT_CLIENT_ID, MQTT_USERNAME, MQTT_PASSWORD))
+    Serial.println("MQTT reconnecting...");
+
+    bool ok = mqttClient.connect(MQTT_CLIENT_ID,MQTT_USERNAME,MQTT_PASSWORD);
+
+    if (ok)
+    {
+        strcpy(netBuffer,"MQTT Connected");
+
+        Serial.println(netBuffer);
+
+        if (mqttClient.subscribe(MQTT_SUB_TOPIC))
         {
-            strcpy(netBuffer, "MQTT Connected");
-            Serial.println(netBuffer);
-
-            // 订阅主题[cite: 1]
-            if (mqttClient.subscribe(MQTT_SUB_TOPIC))
-            {
-                strcpy(netBuffer, "Subscribe OK");
-            }
-            else
-            {
-                strcpy(netBuffer, "Subscribe Fail");
-            }
-
-            // 发送上线提醒 (非协议强制，但有助于调试)
-            mqtt_send_info("esp32 car1 online");
+            strcpy(netBuffer,"Subscribe OK");
         }
         else
         {
-            sprintf(netBuffer, "MQTT Fail:%d", mqttClient.state());
-            Serial.println(netBuffer);
-            delay(2000);
+            strcpy(netBuffer,"Subscribe Fail");
         }
+
+        mqtt_send_info(
+            "esp32 car1 online");
+    }
+    else
+    {
+        sprintf(netBuffer,"MQTT Fail:%d",mqttClient.state());
+
+        Serial.println(netBuffer);
     }
 }
 
 void handleMQTTLoop()
 {
-    if (!mqttClient.connected())
-    {
-        reconnectMQTT();
-    }
+    reconnectMQTT();
+
     mqttClient.loop();
 }
 
-// ======================== 发送(Publish)实现 ========================
-// 到达路口或终点指引[cite: 1]
 void mqtt_send_arrive()
 {
     StaticJsonDocument<128> doc;

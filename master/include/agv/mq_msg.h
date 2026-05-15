@@ -119,6 +119,7 @@ enum class MqttCmdType : uint8_t {
     QUERY=2,
     ACTION=3,
     TST_POS=4,
+    CNT=5,
 };
 std::string mqtt_cmd_type_to_str(MqttCmdType type) {
     switch (type) {
@@ -126,9 +127,14 @@ std::string mqtt_cmd_type_to_str(MqttCmdType type) {
         case MqttCmdType::CMD_ori:   return "ORIENT";
         case MqttCmdType::QUERY:     return "QUERY";
         case MqttCmdType::ACTION:    return "ACTION";
+        case MqttCmdType::CNT:       return "CNT";
         default:                    return "UNKNOWN";
     }
 }
+struct CntParam{
+    uint16_t cnt;
+    uint8_t _pad[2];  
+};
 struct AngleParam{
     uint16_t angle;
     uint8_t _pad[2];  
@@ -209,6 +215,7 @@ struct MqttPublishMsg {
         OriParam c_ori;
         QueryParam c_query;
         ActionParam c_action;
+        CntParam c_cnt;
     } params;
     static MqttPublishMsg make_angle(uint8_t car_id, uint16_t angle) {
         MqttPublishMsg m{};
@@ -242,7 +249,14 @@ struct MqttPublishMsg {
         m.qos       = 2;
         return m;
     }
-    
+    static MqttPublishMsg make_cnt(uint8_t car_id, uint16_t cnt) {
+        MqttPublishMsg m{};
+        m.cmd_type  = MqttCmdType::CNT;
+        m.car_id    = car_id;
+        m.params.c_cnt.cnt = cnt; // 复用 angle 字段存计数
+        m.qos       = 2;
+        return m;
+    }
     //TEST***< 事件模拟消息构造函数
     void set_event(bool is_event) {
         #ifdef _AGV_USE_EVENT_MSG
@@ -293,6 +307,10 @@ struct MqttPublishMsg {
             case MqttCmdType::ACTION:
                 snprintf(payload_buf, payload_buf_size, "{\"type\":\"ACTION\",\"param\":\"%s\"}",
                         action_cmd_to_str(params.c_action.cmd).c_str());
+                break;
+            case MqttCmdType::CNT:
+                    snprintf(payload_buf, payload_buf_size, "{\"type\":\"CNT\",\"param\":%u}", 
+                        params.c_cnt.cnt);
                 break;
             default:
                 payload_buf[0] = '\0';
