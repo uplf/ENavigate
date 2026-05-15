@@ -149,7 +149,7 @@ namespace agv{
             shm_update_car(_shm.ptr(),msg.car_id-1,current_car);
 
             //根据immediate即时发布对应信息
-            _mq_send.send(MqttPublishMsg::make_cnt(msg.car_id,path.size()));
+            _mq_send.send(MqttPublishMsg::make_cnt(msg.car_id,path.size()),kPrioHigh);
             switch(msg.immediate){
                 case agv::ImmeStra::kUturn:{
                     _mq_send.send(MqttPublishMsg::make_action(msg.car_id, ActionCmd::kUturn),kPrioHigh);

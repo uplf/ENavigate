@@ -19,7 +19,8 @@ enum Orient
     O_STRAIGHT,
     O_LEFT,
     O_RIGHT,
-    O_ARRIVED
+    O_ARRIVED,
+    O_UTURN
 };
 
 enum Action
@@ -27,7 +28,8 @@ enum Action
     A_NONE,
     A_PAUSE,
     A_PROCESS,
-    A_UTURN
+    A_UTURN,
+    A_SETN
 };
 
 typedef struct
@@ -35,6 +37,8 @@ typedef struct
     Action action;
 
     Orient orient;
+
+    int roadnum;
 
 } Cmd_t;
 
@@ -60,5 +64,5 @@ void mqtt_send_info(
 void mqtt_send_ack(
     const String &query_type,
     const String &data);
-
+void mqtt_send_position();
 #endif

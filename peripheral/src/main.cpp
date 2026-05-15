@@ -31,7 +31,8 @@ enum State
 {
   STATE_IDLE,
   STATE_FOLLOW,
-  STATE_TURN
+  STATE_TURN,
+  STATE_WAIT_NODE
 };
 
 
@@ -53,6 +54,7 @@ typedef struct
   int encoder1;
   int encoder2;
   Orient orient;
+  int roadnum;
 
   bool wifiConnected;
 
@@ -73,11 +75,10 @@ static char rxBuffer[64];
 static int rxIndex = 0;
 
 
-float Kp = 0.3f;
+float Kp = 0.18f;
 bool isturn = false;
 int last_node_flag = 0;
-
-
+int roadcount = 0;
 
 void initHardware();
 void initDisplay();
@@ -202,6 +203,8 @@ void ControlTask(void *pvParameters)
 
   Orient orient = O_NONE;
 
+  int road_num = 0;
+
   while (1)
   {
     //接收视觉
@@ -210,33 +213,39 @@ void ControlTask(void *pvParameters)
 
       g_systemStatus.dx = visionData.dx;
       g_systemStatus.node_flag =visionData.node_flag;
-
+      
       xSemaphoreGive(g_statusMutex);
     }
 
     //接收mqtt
-    while (xQueueReceive(g_commandQueue,&command,0) == pdTRUE){
+    while (xQueueReceive(g_commandQueue, &command, 0) == pdTRUE){
+
       switch (command.action){
-      case A_PAUSE:
-        drive_setPWM34(0, 0);
-        currentState = STATE_IDLE;
-        break;
+        case A_PAUSE:
+          drive_setPWM34(0, 0);
+          currentState = STATE_IDLE;
+          break;
+          
+        case A_PROCESS:
+          if (currentState == STATE_IDLE)
+            currentState = STATE_FOLLOW;
+          break;
 
-      case A_PROCESS:
-        if (currentState == STATE_IDLE)
-          currentState = STATE_FOLLOW;
-        break;
+        case A_UTURN:
+          Turn(220);
+          drive_setPWM34(-25, 25);
+          currentState = STATE_TURN;
+          break;
+        case A_SETN:
+          road_num = command.roadnum;
+          break;
 
-      case A_UTURN:
-        Turn(180);
-        drive_setPWM34(-40, 40);
-        currentState = STATE_TURN;
-        break;
-
-      default:break;
+        default:
+          break;
       }
 
       orient = command.orient;
+  
     }
 
     switch (currentState){
@@ -245,27 +254,37 @@ void ControlTask(void *pvParameters)
 
     case STATE_FOLLOW:{
       int dx = visionData.dx;
-
       drive_DIFFsetPWM34(-dx * Kp);
 
-      if (visionData.node_flag == 1 &&last_node_flag == 0){
+      if (visionData.node_flag == 1 && last_node_flag == 0){
         resetEncoders();
         isturn = true;
         mqtt_send_arrive();
+        roadcount++;
       }
 
-      if (getEncoder1Count() > 750 &&getEncoder2Count() > 750 &&isturn){
+      if(roadcount > road_num && road_num != 0){
+        drive_setPWM34(0, 0);
+        currentState = STATE_IDLE;
+        isturn = false;
+        mqtt_send_info("Road count reached");
+        roadcount = 0;
+        orient = O_NONE;
+        break;
+      }
+
+      if (getEncoder1Count() > 750 && getEncoder2Count() > 750 && isturn){
         isturn = false;
         switch (orient){
         case O_LEFT:
           Turn(90);
-          drive_setPWM34(40, -40);
+          drive_setPWM34(25, -25);
           currentState = STATE_TURN;
           break;
 
         case O_RIGHT:
           Turn(-90);
-          drive_setPWM34(-40, 40);
+          drive_setPWM34(-25, 25);
           currentState = STATE_TURN;
           break;
 
@@ -277,18 +296,23 @@ void ControlTask(void *pvParameters)
           currentState = STATE_IDLE;
           break;
 
+        case O_UTURN:
+          Turn(220);
+          drive_setPWM34(-25, 25);
+          currentState = STATE_TURN;
+          break;
+
         default:
           drive_setPWM34(0, 0);
           mqtt_send_info("No command at node");
           currentState = STATE_IDLE;
           break;
         }
+
         orient = O_NONE;
       }
 
-      last_node_flag =
-          visionData.node_flag;
-
+      last_node_flag = visionData.node_flag;
       break;
     }
 
@@ -297,12 +321,10 @@ void ControlTask(void *pvParameters)
       {
         currentState = STATE_FOLLOW;
       }
-
       break;
     }
 
-
-    xSemaphoreTake(g_statusMutex,portMAX_DELAY);
+    xSemaphoreTake(g_statusMutex, portMAX_DELAY);
 
     g_systemStatus.currentState = currentState;
 
@@ -310,13 +332,15 @@ void ControlTask(void *pvParameters)
 
     g_systemStatus.encoder2 = getEncoder2Count();
 
-    g_systemStatus.orient =orient;
+    g_systemStatus.orient = orient;
 
+    g_systemStatus.roadnum = road_num;
     xSemaphoreGive(g_statusMutex);
 
-    vTaskDelayUntil(&xLastWakeTime,pdMS_TO_TICKS(CONTROL_TASK_PERIOD_MS));
+    vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(CONTROL_TASK_PERIOD_MS));
   }
 }
+
 
 
 void VisionTask(void *pvParameters)
@@ -414,7 +438,7 @@ void DisplayTask(void *pvParameters)
 
     u8g2.setCursor(5, 28);
 
-    u8g2.printf("dx:%d node:%d",localStatus.dx,localStatus.node_flag);
+    u8g2.printf("count:%d,num:%d",roadcount,localStatus.roadnum);
 
     u8g2.setCursor(5, 44);
 
@@ -422,7 +446,7 @@ void DisplayTask(void *pvParameters)
 
     u8g2.setCursor(5, 60);
 
-    u8g2.printf("E2:%d",localStatus.encoder2);
+    u8g2.printf("orient:%d",localStatus.orient);
 
     u8g2.sendBuffer();
 
@@ -456,11 +480,9 @@ void KeyTask(void *pvParameters)
   {
     if (xSemaphoreTake(g_keysem,portMAX_DELAY) == pdTRUE)
     {
-      Cmd_t cmd;
-      cmd.action = A_PROCESS;
-      cmd.orient = O_RIGHT;
-      xQueueSend(g_commandQueue,&cmd,0);
+      mqtt_send_position();
     }
+
 
   }
 }
@@ -476,6 +498,6 @@ void IRAM_ATTR key1_isr()
 void IRAM_ATTR key2_isr()
 {
   BaseType_t Woken = pdFALSE;
-  xSemaphoreGiveFromISR(g_keysem,&Woken);
+  xSemaphoreGiveFromISR(g_keysem, &Woken);
   portYIELD_FROM_ISR(Woken);
 }

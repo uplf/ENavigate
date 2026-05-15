@@ -95,10 +95,10 @@ bool checkTurnDone()
         return true;
 
     // 使用绝对值判断，无视正反转方向
-    bool m1_done = abs(getEncoder1Count()) >= abs(targetCount1)-50;
-    bool m2_done = abs(getEncoder2Count()) >= abs(targetCount2)-50;
+    bool m1_done = abs(getEncoder1Count()) >= abs(targetCount1);
+    bool m2_done = abs(getEncoder2Count()) >= abs(targetCount2);
 
-    if (m1_done && m2_done)
+    if (m1_done || m2_done)
     {
         isTurning = false;
         return true; // 已完成

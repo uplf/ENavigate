@@ -55,7 +55,7 @@ void mqttCallback(char *topic, byte *payload, unsigned int length)
     cmd.action = A_NONE;
 
     cmd.orient = O_NONE;
-
+    cmd.roadnum = 0;
 
     if (type == "ORIENT")
     {
@@ -63,6 +63,7 @@ void mqttCallback(char *topic, byte *payload, unsigned int length)
         else if (param == "LEFT") cmd.orient = O_LEFT;
         else if (param == "RIGHT") cmd.orient = O_RIGHT;
         else if (param == "ARRIVED")cmd.orient = O_ARRIVED;
+        else if (param == "UTURN") cmd.orient = O_UTURN;
 
         xQueueSend(g_commandQueue,&cmd,0);
     }
@@ -73,6 +74,12 @@ void mqttCallback(char *topic, byte *payload, unsigned int length)
         if (param == "PAUSE")cmd.action = A_PAUSE;
         else if (param == "PROCESS")cmd.action = A_PROCESS;
         else if (param == "UTURN")cmd.action = A_UTURN;
+
+        xQueueSend(g_commandQueue,&cmd,0);
+    }
+    else if(type == "CNT"){
+        cmd.roadnum = param.toInt();
+        cmd.action = A_SETN; 
 
         xQueueSend(g_commandQueue,&cmd,0);
     }
@@ -178,6 +185,16 @@ void mqtt_send_repaired()
     mqttClient.publish(MQTT_PUB_TOPIC, output);
 }
 
+void mqtt_send_position()
+{
+    StaticJsonDocument<128> doc;
+    doc["type"] = "POSITION";
+    doc["param"] = "1-4"; // 
+
+    char output[128];
+    serializeJson(doc, output);
+    mqttClient.publish(MQTT_PUB_TOPIC, output);
+}
 // 其他信息[cite: 1]
 void mqtt_send_info(const String &info_msg)
 {

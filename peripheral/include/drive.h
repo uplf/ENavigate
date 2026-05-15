@@ -20,8 +20,8 @@
 #define PWM_CHANNEL_4   1
 
 // ===================== 速度参数 =====================
-#define BASIC_SPEEDR    50
-#define BASIC_SPEEDL    50
+#define BASIC_SPEEDR    20
+#define BASIC_SPEEDL    20
 
 // 是否允许反转
 #define INV_ABLE        1
