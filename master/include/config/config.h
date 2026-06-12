@@ -41,7 +41,7 @@
 
 
 //属于暂时的障碍
-#define AGC_TMP_OBSTACLE "apple", "banana", "orange", nullptr
+#define AGC_TMP_OBSTACLE "car","people","cat","dog","stop","motor","tree","slave", "null",nullptr
 
 //确定小车编号和shm编号的对应关系并更新到全部文件中才能移除并编译
 //not_allow_to_compile_if_not_removed;
