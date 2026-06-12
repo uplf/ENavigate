@@ -215,8 +215,6 @@ int main(){
         }
 
     }
-    ::close(reset_efd);
-    g_reset_efd = -1;
     LOG_INFO(proc_name,"shutdown-requested");
     exit_seq.run(200);
     LOG_INFO(proc_name,"shutdown-finished");
