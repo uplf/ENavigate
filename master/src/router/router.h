@@ -65,6 +65,7 @@ namespace agv{
             
             if(current_car.current_node_id==current_car.target_node_id){
                 current_car.status=agv::CarStatus::IDLE;
+                shm_set_edge_status(_shm.ptr(),current_car.path_stack[current_car.path_len-1],agv::EdgeStatus::OCCUPIED);
                 current_car.path_len=0;
                 current_car.last_start_node_id=current_car.current_node_id;
                 current_car.current_task_id=0;

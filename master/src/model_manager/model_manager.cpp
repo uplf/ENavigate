@@ -30,8 +30,8 @@ void init_map(agv::ShmLayout* shm_ptr){
     shm_ptr->map.edge_count_ = 18*2;
     shm_ptr->bipaths.bipath_count_=0;
     std::vector<agv::bipath_pair> edges{
-        agv::bipath_pair::create(1, 4,  1, 18, 10, agv::EdgeStatus::IDLE, "L1"),
-        agv::bipath_pair::create(2, 5,  2, 18, 10, agv::EdgeStatus::IDLE, "L2"),
+        agv::bipath_pair::create(1, 4,  1, 18, 10, agv::EdgeStatus::OCCUPIED, "L1"),
+        agv::bipath_pair::create(2, 5,  2, 18, 10, agv::EdgeStatus::OCCUPIED, "L2"),
         agv::bipath_pair::create(3, 6,  3, 18, 10, agv::EdgeStatus::IDLE, "L3"),
 
         agv::bipath_pair::create(4, 5,  4, 18, 10, agv::EdgeStatus::IDLE, "L4"),

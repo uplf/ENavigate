@@ -260,7 +260,6 @@ private:
                     //TODO---如果不是永久障碍，仅更新状态////
                     alter_edges_status(ev.car_id,agv::EdgeStatus::FAULT_TEMP,ev.param.c_str());
                     shm_set_car_status(_shm.ptr(),ev.car_id-1,agv::CarStatus::WAIT);
-                    LOG_INFO(PROC_NAME,"car%u sent cancel cmd due to permanent obstacle", ev.car_id);
                 }
                 break;
             }
