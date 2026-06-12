@@ -65,7 +65,20 @@ namespace agv{
             
             if(current_car.current_node_id==current_car.target_node_id){
                 current_car.status=agv::CarStatus::IDLE;
-                shm_set_edge_status(_shm.ptr(),current_car.path_stack[current_car.path_len-1],agv::EdgeStatus::OCCUPIED);
+                // 将最后一段路径置为 OCCUPIED（path_stack 中存的是 1-based edge_id）
+                uint16_t last_eid = current_car.path_stack[current_car.path_len-1];
+                shm_set_edge_status(_shm.ptr(), last_eid - 1, agv::EdgeStatus::OCCUPIED, "");
+                // 同时处理双向边 counterpart
+                {
+                    auto bp = shm_read_bipaths(_shm.ptr());
+                    uint16_t eid2;
+                    for (int j = 0; j < bp.bipath_count_; ++j) {
+                        if (bp.paths_[j].get_other_path(last_eid, &eid2) != -1) {
+                            shm_set_edge_status(_shm.ptr(), eid2 - 1, agv::EdgeStatus::OCCUPIED, "");
+                            break;
+                        }
+                    }
+                }
                 current_car.path_len=0;
                 current_car.last_start_node_id=current_car.current_node_id;
                 current_car.current_task_id=0;

@@ -136,6 +136,10 @@ namespace agv{
                 //}
                 return false;
             }
+            //保存原始位置（在 current_car 被修改前）
+            uint16_t orig_last = current_car.last_node_id;
+            uint16_t orig_cur  = current_car.current_node_id;
+
             //更新路径信息and小车信息
             if(msg.immediate==ImmeStra::kUturnNoCross)current_car.last_node_id=current_car.current_node_id;
             current_car.current_node_id=start_node;
@@ -147,6 +151,27 @@ namespace agv{
                 current_car.path_len++;
             }
             shm_update_car(_shm.ptr(),msg.car_id-1,current_car);
+
+            //小车已进入 MOVING，释放旧路径上的 OCCUPIED
+            if (orig_last > 0 && orig_cur > 0) {
+                auto map = shm_read_map(_shm.ptr());
+                for (int i = 0; i < map.adj_[orig_last - 1].count; ++i) {
+                    uint16_t eid = map.adj_[orig_last - 1].edge_ids[i];
+                    if (map.edges_[eid - 1].to_node == orig_cur &&
+                        map.edges_[eid - 1].status == agv::EdgeStatus::OCCUPIED) {
+                        shm_set_edge_status(_shm.ptr(), eid - 1, agv::EdgeStatus::IDLE, "");
+                        auto bp = shm_read_bipaths(_shm.ptr());
+                        uint16_t eid2;
+                        for (int j = 0; j < bp.bipath_count_; ++j) {
+                            if (bp.paths_[j].get_other_path(eid, &eid2) != -1) {
+                                shm_set_edge_status(_shm.ptr(), eid2 - 1, agv::EdgeStatus::IDLE, "");
+                                break;
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
 
             //根据immediate即时发布对应信息
             _mq_send.send(MqttPublishMsg::make_cnt(msg.car_id,path.size()),kPrioHigh);
@@ -232,11 +257,11 @@ namespace agv{
                     NodeStatus n_status = next_ptr.status;
                     if (e_status == EdgeStatus::BLOCKED ||
                         e_status == EdgeStatus::FAULT_REPAIR ||
+                        e_status == EdgeStatus::OCCUPIED ||
                         n_status == NodeStatus::FAULT)
                         continue;
                     float penalty = 0.0f;
-                    if (e_status == EdgeStatus::OCCUPIED ||
-                        e_status == EdgeStatus::FAULT_TEMP ||
+                    if (e_status == EdgeStatus::FAULT_TEMP ||
                         n_status == NodeStatus::OCCUPIED)
                         penalty = SOFT_OBSTACLE_PENALTY;
 

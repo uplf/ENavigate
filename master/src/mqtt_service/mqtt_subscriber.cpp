@@ -279,12 +279,37 @@ private:
             }
             case EventType::kPOSITION:{
                 agv::Car snap=agv::shm_read_car(_shm.ptr(),ev.car_id-1);
-                snap.current_node_id=ev.val_param2;
-                snap.last_node_id=ev.val_param;
-                snap.current_task_id=0;
-                snap.path_len=0;
-                snap.status=agv::CarStatus::IDLE;
-                agv::shm_update_car(_shm.ptr(),ev.car_id-1,snap);
+
+                // 更新前：释放旧路径（last_node_id → current_node_id），若为 OCCUPIED 则置 IDLE
+                if (snap.last_node_id > 0 && snap.current_node_id > 0) {
+                    auto map = agv::shm_read_map(_shm.ptr());
+                    uint16_t from = snap.last_node_id;
+                    uint16_t to   = snap.current_node_id;
+                    for (int i = 0; i < map.adj_[from - 1].count; ++i) {
+                        uint16_t eid = map.adj_[from - 1].edge_ids[i];
+                        if (map.edges_[eid - 1].to_node == to &&
+                            map.edges_[eid - 1].status == agv::EdgeStatus::OCCUPIED) {
+                            agv::shm_set_edge_status(_shm.ptr(), eid - 1, agv::EdgeStatus::IDLE, "");
+                            auto bp = agv::shm_read_bipaths(_shm.ptr());
+                            uint16_t eid2;
+                            for (int j = 0; j < bp.bipath_count_; ++j) {
+                                if (bp.paths_[j].get_other_path(eid, &eid2) != -1) {
+                                    agv::shm_set_edge_status(_shm.ptr(), eid2 - 1, agv::EdgeStatus::IDLE, "");
+                                    break;
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+
+                snap.current_node_id = ev.val_param2;
+                snap.last_node_id    = ev.val_param;
+                snap.current_task_id = 0;
+                snap.path_len        = 0;
+                snap.status          = agv::CarStatus::IDLE;
+                agv::shm_update_car(_shm.ptr(), ev.car_id - 1, snap);
+
                 LOG_INFO(PROC_NAME,"car%u position: %d-%d", ev.car_id, ev.val_param, ev.val_param2);
                 break;
             }

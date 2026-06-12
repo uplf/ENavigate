@@ -353,7 +353,7 @@ body {
       <div class="leg"><div class="leg-dot" style="background:#3fb950"></div>已选中</div>
       <div class="leg"><div class="leg-dot" style="background:#f85149"></div>节点故障</div>
       <div class="leg"><div class="leg-line" style="background:#4a5568"></div>空闲路径</div>
-      <div class="leg"><div class="leg-line" style="background:#d29922"></div>有车通过</div>
+      <div class="leg"><div class="leg-line" style="background:#388bfd"></div>有车通过</div>
       <div class="leg"><div class="leg-line" style="background:#ff5722"></div>暂时故障</div>
       <div class="leg"><div class="leg-line" style="background:#d849f8"></div>待修复故障</div>
       <div class="leg"><div class="leg-line" style="background:#ff9800"></div>禁止通行</div>
@@ -458,8 +458,8 @@ let EDGES = [
 const SERVER_URL = 'https://myxiaxiais.art'; // 服务器地址，可根据需要修改
 
 /* ───────────────────────── 状态 ───────────────────────── */
-const CAR_COLORS = {idle:'#388bfd', moving:'#3fb950', fault:'#f85149', offline:'#6e7681',realloc:'#d29922'};
-const CAR_STATUS_CN = {idle:'待指派', moving:'行进中', fault:'故  障', offline:'离  线',realloc:'待重新分配'};
+const CAR_COLORS = {idle:'#388bfd', moving:'#3fb950', fault:'#f85149', offline:'#6e7681', realloc:'#d29922', wait:'#f0883e'};
+const CAR_STATUS_CN = {idle:'待指派', moving:'行进中', fault:'故  障', offline:'离  线', realloc:'待重新分配', wait:'等  待'};
 const CAR_ROUTE_COLORS = {
   C1: '#00eaff',  // C1 路径颜色：青蓝色
   C2: '#3fb950'   // C2 路径颜色：黄色
@@ -570,7 +570,7 @@ function edgeStroke(id){
   if(s === 'fault_repair') return '#d849f8';
   if(s === 'fault_temp') return '#ff5722';
   if(s === 'blocked') return '#ff9800';
-  if(s === 'occupied') return '#d29922';
+  if(s === 'occupied') return '#388bfd';
   return '#4a5568';
 }
 
