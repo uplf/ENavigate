@@ -38,6 +38,20 @@ start() {
         -n \
         -- "$API_DIR/Topo" >> "$LOG_DIR/topo.log" 2>&1 &
 
+    spawn-fcgi \
+        -s "$SOCK_DIR/capture.sock" \
+        -P "$PID_DIR/capture.pid" \
+        -n \
+        -- "$API_DIR/Capture" >> "$LOG_DIR/capture.log" 2>&1 &
+
+    spawn-fcgi \
+        -s "$SOCK_DIR/upload.sock" \
+        -P "$PID_DIR/upload.pid" \
+        -n \
+        -- "$API_DIR/Upload" >> "$LOG_DIR/upload.log" 2>&1 &
+
+    mkdir -p /var/agv/captures
+
     sleep 0.5
     chmod 666 "$SOCK_DIR"/*.sock
     echo "[start_api] all started. sockets in $SOCK_DIR"

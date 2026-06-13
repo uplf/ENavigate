@@ -57,6 +57,30 @@ server {
         fastcgi_param CONTENT_TYPE   $content_type;
     }
 
+    # ── POST /api/capture ──────────────────────────────────────────
+    location = /api/capture {
+        fastcgi_pass  unix:/run/agv/capture.sock;
+        include       fastcgi_params;
+        fastcgi_param REQUEST_URI    $request_uri;
+        fastcgi_param REQUEST_METHOD $request_method;
+        fastcgi_param CONTENT_LENGTH $content_length;
+        fastcgi_param CONTENT_TYPE   $content_type;
+    }
+
+    # ── POST /api/upload_image ─────────────────────────────────────
+    # Called by ESP32 car, not by the web frontend.
+    # Accepts raw JPEG body up to 512 KB per image (5 images per session).
+    location = /api/upload_image {
+        fastcgi_pass  unix:/run/agv/upload.sock;
+        include       fastcgi_params;
+        fastcgi_param REQUEST_URI    $request_uri;
+        fastcgi_param QUERY_STRING   $query_string;
+        fastcgi_param REQUEST_METHOD $request_method;
+        fastcgi_param CONTENT_LENGTH $content_length;
+        fastcgi_param CONTENT_TYPE   $content_type;
+        client_max_body_size 512k;
+    }
+
     # ── 兜底 404 ───────────────────────────────────────────────────
     location /api/ {
         return 404 '{"code":404,"msg":"接口不存在","data":null}';

@@ -120,20 +120,26 @@ enum class MqttCmdType : uint8_t {
     ACTION=3,
     TST_POS=4,
     CNT=5,
+    CMD_CAPTURE=6,
 };
 std::string mqtt_cmd_type_to_str(MqttCmdType type) {
     switch (type) {
-        case MqttCmdType::CMD_angle: return "ANGLE";
-        case MqttCmdType::CMD_ori:   return "ORIENT";
-        case MqttCmdType::QUERY:     return "QUERY";
-        case MqttCmdType::ACTION:    return "ACTION";
-        case MqttCmdType::CNT:       return "CNT";
-        default:                    return "UNKNOWN";
+        case MqttCmdType::CMD_angle:   return "ANGLE";
+        case MqttCmdType::CMD_ori:     return "ORIENT";
+        case MqttCmdType::QUERY:       return "QUERY";
+        case MqttCmdType::ACTION:      return "ACTION";
+        case MqttCmdType::CNT:         return "CNT";
+        case MqttCmdType::CMD_CAPTURE: return "CAPTURE";
+        default:                       return "UNKNOWN";
     }
 }
 struct CntParam{
     uint16_t cnt;
-    uint8_t _pad[2];  
+    uint8_t _pad[2];
+};
+struct CaptureParam{
+    uint8_t node_id;
+    uint8_t _pad[3];
 };
 struct AngleParam{
     uint16_t angle;
@@ -216,6 +222,7 @@ struct MqttPublishMsg {
         QueryParam c_query;
         ActionParam c_action;
         CntParam c_cnt;
+        CaptureParam c_capture;
     } params;
     static MqttPublishMsg make_angle(uint8_t car_id, uint16_t angle) {
         MqttPublishMsg m{};
@@ -255,6 +262,14 @@ struct MqttPublishMsg {
         m.car_id    = car_id;
         m.params.c_cnt.cnt = cnt; // 复用 angle 字段存计数
         m.qos       = 2;
+        return m;
+    }
+    static MqttPublishMsg make_capture(uint8_t car_id, uint8_t node_id) {
+        MqttPublishMsg m{};
+        m.cmd_type  = MqttCmdType::CMD_CAPTURE;
+        m.car_id    = car_id;
+        m.params.c_capture.node_id = node_id;
+        m.qos       = 1;
         return m;
     }
     //TEST***< 事件模拟消息构造函数
@@ -309,8 +324,12 @@ struct MqttPublishMsg {
                         action_cmd_to_str(params.c_action.cmd).c_str());
                 break;
             case MqttCmdType::CNT:
-                    snprintf(payload_buf, payload_buf_size, "{\"type\":\"CNT\",\"param\":%u}", 
-                        params.c_cnt.cnt);
+                snprintf(payload_buf, payload_buf_size, "{\"type\":\"CNT\",\"param\":%u}",
+                    params.c_cnt.cnt);
+                break;
+            case MqttCmdType::CMD_CAPTURE:
+                snprintf(payload_buf, payload_buf_size, "{\"type\":\"CAPTURE\",\"param\":\"N%u\"}",
+                    params.c_capture.node_id);
                 break;
             default:
                 payload_buf[0] = '\0';

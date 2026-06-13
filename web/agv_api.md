@@ -318,6 +318,158 @@ POST /api/ban
 |»» edges|string|true|none||none|
 |»» nodes|string|true|none||none|
 
+## POST capture请求
+
+POST /api/capture
+
+由 Web 端在选中小车后调用，触发该车的拍照扫描。主机读取该车当前节点后通过 MQTT 下发 `CAPTURE` 命令。
+
+> Body 请求参数
+
+```json
+{
+  "car": "C1"
+}
+```
+
+### 请求参数
+
+|名称|位置|类型|必选|说明|
+|---|---|---|---|---|
+|body|body|object|是|none|
+|» car|body|string|是|小车编号，如 `C1`、`C2`|
+
+> 返回示例
+
+> 200 Response
+
+```json
+{
+    "code": 200,
+    "msg": "拍照指令已发送",
+    "data": {
+        "car": "C1",
+        "node": "N5"
+    }
+}
+```
+
+> 400 Response
+
+```json
+{
+    "code": 400,
+    "msg": "缺少 car 字段",
+    "data": null
+}
+```
+
+### 返回结果
+
+|状态码|状态码含义|说明|数据模型|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|指令已成功发入 MQTT 队列|Inline|
+|400|[Bad Request](https://tools.ietf.org/html/rfc7231#section-6.5.1)|参数缺失或格式错误|Inline|
+
+### 返回数据结构
+
+状态码 **200**
+
+|名称|类型|必选|约束|中文名|说明|
+|---|---|---|---|---|---|
+|» code|number|true|none||none|
+|» msg|string|true|none||none|
+|» data|object|true|none||none|
+|»» car|string|true|none||小车编号|
+|»» node|string|true|none||拍照时所在节点，由主机从 SHM 读取|
+
+---
+
+## POST upload_image请求
+
+POST /api/upload_image
+
+由 **ESP32 小车**调用（非 Web 端）。每次拍照会话发送 5 次请求，每次携带一张 JPEG 图片（原始二进制）。主机将图片保存到 `/var/agv/captures/<car>/<ts>_<node>_<seq>.jpg`。
+
+### 请求参数
+
+**Query 参数（均必选）：**
+
+|名称|位置|类型|说明|
+|---|---|---|---|
+|car|query|string|小车编号，如 `C1`|
+|node|query|string|拍照节点，如 `N5`|
+|ts|query|string|时间戳字符串，同组 5 张相同，如 `20260613143022`|
+|seq|query|integer|序列号，范围 `1~5`|
+
+**Body：**
+
+- `Content-Type: application/octet-stream`
+- 原始 JPEG 二进制，单张上限 **512 KB**
+
+完整请求示例：
+
+```
+POST /api/upload_image?car=C1&node=N5&ts=20260613143022&seq=3
+Content-Type: application/octet-stream
+Content-Length: 87432
+
+<binary JPEG data>
+```
+
+> 返回示例
+
+> 200 Response
+
+```json
+{
+    "code": 200,
+    "msg": "图片已保存",
+    "data": {
+        "car": "C1",
+        "node": "N5",
+        "seq": 3,
+        "size": 87432,
+        "path": "/var/agv/captures/C1/20260613143022_N5_3.jpg"
+    }
+}
+```
+
+> 400 Response
+
+```json
+{
+    "code": 400,
+    "msg": "缺少必要参数 car/node/ts/seq",
+    "data": null
+}
+```
+
+### 返回结果
+
+|状态码|状态码含义|说明|数据模型|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|图片保存成功|Inline|
+|400|[Bad Request](https://tools.ietf.org/html/rfc7231#section-6.5.1)|参数缺失、seq 越界或图片超限|Inline|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|目录创建失败或磁盘写入失败|Inline|
+
+### 返回数据结构
+
+状态码 **200**
+
+|名称|类型|必选|约束|中文名|说明|
+|---|---|---|---|---|---|
+|» code|number|true|none||none|
+|» msg|string|true|none||none|
+|» data|object|true|none||none|
+|»» car|string|true|none||小车编号|
+|»» node|string|true|none||节点名|
+|»» seq|integer|true|none||序列号 1~5|
+|»» size|integer|true|none||实际写入字节数|
+|»» path|string|true|none||服务器端保存路径|
+
+---
+
 ## GET status请求
 
 GET /api/status

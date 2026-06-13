@@ -24,12 +24,13 @@ static const char* PROC_NAME = "mqtt_subscriber";
 // ─────────────────────────────────────────────────────────────────────────────
 
 enum class EventType : uint8_t {
-    kARRIVE  = 0,
-    kOBSTACLE  = 1,
-    kREPAIRED = 2,
-    kACK=3,
-    kINFO=4,
-    kPOSITION=5,
+    kARRIVE      = 0,
+    kOBSTACLE    = 1,
+    kREPAIRED    = 2,
+    kACK         = 3,
+    kINFO        = 4,
+    kPOSITION    = 5,
+    kCAPTURE_ACK = 6,
 };
 
 struct CarEvent {
@@ -131,6 +132,10 @@ static CarEvent parse_event(const char* topic, const char* payload) {
         ev.type = EventType::kACK;
     } else if (strncmp(type_val, "INFO", vlen) == 0) {
         ev.type = EventType::kINFO;
+    } else if (strncmp(type_val, "CAPTURE_ACK", vlen) == 0) {
+        ev.type = EventType::kCAPTURE_ACK;
+        const char* param_val = json_get(payload, "param", &vlen);
+        if (param_val) ev.param = std::string(param_val, vlen);
     } else if(strncmp(type_val, "POSITION", vlen) == 0){
         ev.type = EventType::kPOSITION;
         const char* kind_val = json_get(payload, "param", &vlen);
@@ -311,6 +316,10 @@ private:
                 agv::shm_update_car(_shm.ptr(), ev.car_id - 1, snap);
 
                 LOG_INFO(PROC_NAME,"car%u position: %d-%d", ev.car_id, ev.val_param, ev.val_param2);
+                break;
+            }
+            case EventType::kCAPTURE_ACK:{
+                LOG_INFO(PROC_NAME, "car%u capture_ack: %s", ev.car_id, ev.param.c_str());
                 break;
             }
             default:
