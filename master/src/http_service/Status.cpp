@@ -1,6 +1,11 @@
 #include <ctime>
 #include <cstdio>
 #include <cstring>
+#include <cerrno>
+#include <dirent.h>
+#include <map>
+#include <vector>
+#include <algorithm>
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
 #include "shm_manager.h"
@@ -10,6 +15,86 @@ using json = nlohmann::json;
 using namespace agv::http;
 
 const char* proc_name="HTTP-status";
+
+static constexpr char kCaptureDir[] = "/var/agv/captures";
+
+// Parse "20260613143022_N5_2.jpg" → ts, node, seq. Returns false on mismatch.
+static bool parse_cap_file(const std::string& name,
+                           std::string& ts, std::string& node, int& seq) {
+    auto ext = name.rfind('.');
+    if (ext == std::string::npos) return false;
+    std::string base = name.substr(0, ext);
+    auto p2 = base.rfind('_');
+    if (p2 == std::string::npos || p2 == 0) return false;
+    auto p1 = base.rfind('_', p2 - 1);
+    if (p1 == std::string::npos) return false;
+    ts   = base.substr(0, p1);
+    node = base.substr(p1 + 1, p2 - p1 - 1);
+    seq  = atoi(base.substr(p2 + 1).c_str());
+    return !ts.empty() && !node.empty() && seq >= 1 && seq <= 5;
+}
+
+// Scan /var/agv/captures/ and build the captures JSON array.
+// Sorted by ts descending, then car ascending.
+static std::string build_captures_json() {
+    struct Session {
+        std::string car, node, ts;
+        std::vector<int> seqs;
+    };
+    std::map<std::string, Session> map;  // key = car|ts|node
+
+    DIR* root = opendir(kCaptureDir);
+    if (!root) return "[]";
+
+    struct dirent* car_ent;
+    while ((car_ent = readdir(root)) != nullptr) {
+        if (car_ent->d_name[0] == '.') continue;
+        std::string car_name = car_ent->d_name;
+        std::string car_path = std::string(kCaptureDir) + "/" + car_name;
+
+        DIR* car_dir = opendir(car_path.c_str());
+        if (!car_dir) continue;
+
+        struct dirent* fent;
+        while ((fent = readdir(car_dir)) != nullptr) {
+            if (fent->d_name[0] == '.') continue;
+            std::string ts, node;
+            int seq;
+            if (!parse_cap_file(fent->d_name, ts, node, seq)) continue;
+            std::string key = car_name + "|" + ts + "|" + node;
+            auto& s = map[key];
+            if (s.car.empty()) { s.car = car_name; s.node = node; s.ts = ts; }
+            s.seqs.push_back(seq);
+        }
+        closedir(car_dir);
+    }
+    closedir(root);
+
+    std::vector<Session> sessions;
+    sessions.reserve(map.size());
+    for (auto& kv : map) {
+        std::sort(kv.second.seqs.begin(), kv.second.seqs.end());
+        sessions.push_back(std::move(kv.second));
+    }
+    std::sort(sessions.begin(), sessions.end(), [](const Session& a, const Session& b) {
+        if (a.ts != b.ts) return a.ts > b.ts;
+        return a.car < b.car;
+    });
+
+    json arr = json::array();
+    for (const auto& s : sessions) {
+        json files = json::array();
+        for (int seq : s.seqs) files.push_back(seq);
+        arr.push_back({
+            {"car", s.car},
+            {"node", s.node},
+            {"ts", s.ts},
+            {"count", static_cast<int>(s.seqs.size())},
+            {"files", files}
+        });
+    }
+    return arr.dump();
+}
 // ── JSON 构建辅助 ─────────────────────────────────────────────────────────────
 
 static void append(char* buf, size_t cap, size_t& pos, const char* fmt, ...) {
@@ -25,6 +110,7 @@ static void append(char* buf, size_t cap, size_t& pos, const char* fmt, ...) {
 static void build_status_json(const agv::MapData& map,
                                const agv::CarData& cars,
                                const agv::bipathData& bipaths,
+                               const char* captures_json,
                                char* out, size_t cap) {
     size_t pos = 0;
 
@@ -165,6 +251,9 @@ static void build_status_json(const agv::MapData& map,
     }
     append(out, cap, pos, "},");
 
+    // ── captures（拍照文件列表）───────────────────────────────────
+    append(out, cap, pos, "\"captures\":%s,", captures_json);
+
     // ── logs（占位，后续接入日志模块）────────────────────────────
     append(out, cap, pos,
            "\"logs\":[],"
@@ -213,7 +302,8 @@ int main() {
         agv::CarData car_snap = agv::shm_read_cars(shm_client.ptr());
         agv::bipathData bi_snap = agv::shm_read_bipaths(shm_client.ptr());
 
-        build_status_json(map_snap, car_snap,bi_snap, json_buf, sizeof(json_buf));
+        std::string captures_json = build_captures_json();
+        build_status_json(map_snap, car_snap, bi_snap, captures_json.c_str(), json_buf, sizeof(json_buf));
 
         reply_json(200, json_buf);
     }

@@ -128,7 +128,7 @@ void init_car(agv::ShmLayout* shm_ptr){
     //car id从1开始
     shm_ptr->cars.cars_[0] = {
         .id              = 1,
-        .status          = agv::CarStatus::WAIT,
+        .status          = agv::CarStatus::IDLE,
         .current_node_id = 4,
         .current_task_id = 0,
         .target_node_id  = 0,
