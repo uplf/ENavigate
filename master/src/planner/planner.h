@@ -108,6 +108,36 @@ namespace agv{
                 }else start_node=rev_node;
             }
             LOG_INFO(proc_name,"arr-start:%d,end:%d",start_node,target_node);
+
+            // 如果小车当前所在路径为 OCCUPIED，在规划前临时改为 IDLE
+            // （小车自身占用的路径不应在 A* 中当作障碍排除）
+            {
+                uint16_t from = current_car.last_node_id;
+                uint16_t to   = current_car.current_node_id;
+                if (from > 0 && to > 0) {
+                    for (int i = 0; i < map_data.adj_[from - 1].count; ++i) {
+                        uint16_t eid = map_data.adj_[from - 1].edge_ids[i];
+                        if (eid >= map_data.edge_count_) continue;
+                        auto& e = map_data.edges_[eid - 1];
+                        if (e.to_node == to && e.status == agv::EdgeStatus::OCCUPIED) {
+                            e.status = agv::EdgeStatus::IDLE;
+                            // 反向边也同步置 IDLE
+                            for (int j = 0; j < map_data.adj_[to - 1].count; ++j) {
+                                uint16_t rid = map_data.adj_[to - 1].edge_ids[j];
+                                if (rid >= map_data.edge_count_) continue;
+                                auto& rev = map_data.edges_[rid - 1];
+                                if (rev.to_node == from && rev.status == agv::EdgeStatus::OCCUPIED) {
+                                    rev.status = agv::EdgeStatus::IDLE;
+                                    break;
+                                }
+                            }
+                            LOG_INFO(proc_name, "car%u edge%u OCCUPIED→IDLE for planning", msg.car_id, eid);
+                            break;
+                        }
+                    }
+                }
+            }
+
             auto path=find_path(map_data,start_node,target_node);
             LOG_INFO(proc_name,"finish plan, routeLenth:%u",path.size());
             //LOG_INFO(proc_name,"begin to transmit");
