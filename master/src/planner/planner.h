@@ -210,14 +210,15 @@ namespace agv{
             const float INF = std::numeric_limits<float>::max();
             constexpr float SOFT_OBSTACLE_PENALTY = 100.0f;
 
-            std::vector<float> g_cost(n, INF);
-            std::vector<int> came_from(n, -1);
-            std::vector<int> came_edge(n, -1);
-            std::vector<bool> closed(n, false);
+            // Arrays are 1-based: size n+1 so node id n maps to index n without overflow.
+            std::vector<float> g_cost(n + 1, INF);
+            std::vector<int> came_from(n + 1, -1);
+            std::vector<int> came_edge(n + 1, -1);
+            std::vector<bool> closed(n + 1, false);
 
             if (start_node >= AGV_MAX_NODES || target_node >= AGV_MAX_NODES)
                 return {};
-            if (start_node >= n || target_node >= n)
+            if (start_node > static_cast<uint16_t>(n) || target_node > static_cast<uint16_t>(n))
                 return {};
             g_cost[start_node] = 0.0f;
             open_set.push({start_node, heuristic(map_data.nodes_[start_node-1], map_data.nodes_[target_node-1])});
@@ -250,7 +251,7 @@ namespace agv{
 
                     const Edge& edge = map_data.edges_[edge_id-1];
                     uint16_t next_node = (edge.from_node == current) ? edge.to_node : edge.from_node;
-                    if (next_node >= AGV_MAX_NODES || next_node >= n)
+                    if (next_node >= AGV_MAX_NODES || next_node > static_cast<uint16_t>(n))
                         continue;
                     const Node& next_ptr = map_data.nodes_[next_node-1];
                     EdgeStatus e_status = edge.status;
@@ -272,7 +273,7 @@ namespace agv{
                         came_from[next_node] = static_cast<int>(current);
                         came_edge[next_node] = static_cast<int>(edge_id);
 
-                        float f = new_g + heuristic(next_ptr, map_data.nodes_[target_node]);
+                        float f = new_g + heuristic(next_ptr, map_data.nodes_[target_node - 1]);
                         open_set.push({next_node, f});
                     }
                 }
