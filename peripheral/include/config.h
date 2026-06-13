@@ -1,0 +1,36 @@
+#ifndef CONFIG_H
+#define CONFIG_H
+
+// ===================== 任务周期 (ms) =====================
+#define CONTROL_TASK_PERIOD_MS     5
+#define DISPLAY_TASK_PERIOD_MS     200
+#define MQTT_TASK_PERIOD_MS        20
+#define SAFETY_TASK_PERIOD_MS      100
+#define COMMAND_WAIT_TIMEOUT_MS    5000
+
+// ===================== 编码器阈值 =====================
+#define ENCODER_PASS_THRESHOLD     500     // 路口定长（编码器计数）
+#define POST_TURN_DISTANCE         200     // 转弯/直行后抑制距离
+
+// ===================== 循线控制参数 =====================
+#define KP_DEFAULT                 0.18f   // 比例系数
+#define DX_FILTER_ALPHA            0.75f   // 低通滤波：新样本权重
+#define DX_FILTER_BETA             0.25f   // 低通滤波：旧值权重 (= 1-alpha)
+#define DX_DEADZONE                3       // 死区
+#define DX_CLAMP                   40      // dx 限幅
+
+// ===================== 转向参数 =====================
+#define TURN_ANGLE_LEFT            87
+#define TURN_ANGLE_RIGHT          -87
+#define TURN_ANGLE_UTURN           200
+#define TURN_DIFF_PWM              25      // 转弯差速 PWM
+
+// ===================== 视觉解析 =====================
+#define VISION_RX_BUFFER_SIZE      80
+#define VISION_BLOCK_READ_SIZE     32
+
+// ===================== WiFi =====================
+#define WIFI_SSID                  "happywaming"
+#define WIFI_PASSWORD              "happywaming2026"
+
+#endif

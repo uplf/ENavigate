@@ -3,10 +3,12 @@
 // 将百分比占空比转换为 ledcWrite 的值
 static uint32_t dutyPWM_calCCR(int16_t dutyPercent)
 {
-    if (dutyPercent < 0) dutyPercent = 0;
-    if (dutyPercent > 100) dutyPercent = 100;
+    if (dutyPercent < 0)
+        dutyPercent = 0;
+    if (dutyPercent > 100)
+        dutyPercent = 100;
 
-    uint32_t maxDuty = (1 << PWM_RESOLUTION) - 1;   // 8位时为255
+    uint32_t maxDuty = (1 << PWM_RESOLUTION) - 1; // 8位时为255
     return (uint32_t)dutyPercent * maxDuty / 100;
 }
 
