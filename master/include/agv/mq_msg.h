@@ -139,7 +139,7 @@ struct CntParam{
 };
 struct CaptureParam{
     uint8_t node_id;
-    uint8_t _pad[3];
+    char    ts[16];  // "YYYYMMDDHHmmss"
 };
 struct AngleParam{
     uint16_t angle;
@@ -264,11 +264,13 @@ struct MqttPublishMsg {
         m.qos       = 2;
         return m;
     }
-    static MqttPublishMsg make_capture(uint8_t car_id, uint8_t node_id) {
+    static MqttPublishMsg make_capture(uint8_t car_id, uint8_t node_id, const char* ts) {
         MqttPublishMsg m{};
         m.cmd_type  = MqttCmdType::CMD_CAPTURE;
         m.car_id    = car_id;
         m.params.c_capture.node_id = node_id;
+        strncpy(m.params.c_capture.ts, ts, sizeof(m.params.c_capture.ts) - 1);
+        m.params.c_capture.ts[sizeof(m.params.c_capture.ts) - 1] = '\0';
         m.qos       = 1;
         return m;
     }
@@ -328,8 +330,8 @@ struct MqttPublishMsg {
                     params.c_cnt.cnt);
                 break;
             case MqttCmdType::CMD_CAPTURE:
-                snprintf(payload_buf, payload_buf_size, "{\"type\":\"CAPTURE\",\"param\":\"N%u\"}",
-                    params.c_capture.node_id);
+                snprintf(payload_buf, payload_buf_size, "{\"type\":\"CAPTURE\",\"param\":\"N%u\",\"ts\":\"%s\"}",
+                    params.c_capture.node_id, params.c_capture.ts);
                 break;
             default:
                 payload_buf[0] = '\0';

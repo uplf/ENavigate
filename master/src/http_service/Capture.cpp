@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <cstring>
+#include <ctime>
 #include <string>
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
@@ -67,17 +68,26 @@ int main() {
             node_str = node_id_to_str(node_id);
         }
 
+        // 生成时间戳 YYYYMMDDHHmmss
+        char ts[16];
+        {
+            time_t now = time(nullptr);
+            struct tm t;
+            localtime_r(&now, &t);
+            strftime(ts, sizeof(ts), "%Y%m%d%H%M%S", &t);
+        }
+
         if (mq_ok) {
-            auto msg = agv::MqttPublishMsg::make_capture(car_id, node_id);
+            auto msg = agv::MqttPublishMsg::make_capture(car_id, node_id, ts);
             mq.send(msg, agv::kPrioNormal);
         }
 
-        dprintf(2, "[capture_api] car=%s node=%s\n", car_str.c_str(), node_str.c_str());
+        dprintf(2, "[capture_api] car=%s node=%s ts=%s\n", car_str.c_str(), node_str.c_str(), ts);
 
         char data[128];
         snprintf(data, sizeof(data),
-                 "{\"car\":\"%s\",\"node\":\"%s\"}",
-                 car_str.c_str(), node_str.c_str());
+                 "{\"car\":\"%s\",\"node\":\"%s\",\"ts\":\"%s\"}",
+                 car_str.c_str(), node_str.c_str(), ts);
         reply_ok("拍照指令已发送", data);
     }
     return 0;
