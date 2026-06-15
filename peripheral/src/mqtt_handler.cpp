@@ -1,4 +1,25 @@
 #include "mqtt_handler.h"
+<<<<<<< HEAD
+#include "config.h"
+#include "credentials.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
+
+#define STR_HELPER(x) #x
+#define STR(x) STR_HELPER(x)
+
+extern QueueHandle_t g_cmdQ;
+
+// CAPTURE 命令参数，ControlTask 读取
+char g_capNode[16] = "";
+char g_capTs[20] = "";
+bool g_capReq = false;
+
+// MQTT_SERVER, MQTT_PORT, MQTT_USERNAME, MQTT_PASSWORD 定义在 credentials.h
+const char *MQTT_CLIENT_ID = "esp32_car" STR(CAR_ID) "_001";
+const char *MQTT_PUB_TOPIC = "car/" STR(CAR_ID) "/event";
+const char *MQTT_SUB_TOPIC = "car/" STR(CAR_ID) "/cmd";
+=======
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 
@@ -11,6 +32,7 @@ const char *MQTT_USERNAME = "agv";
 const char *MQTT_PASSWORD = "123456";
 const char *MQTT_PUB_TOPIC = "car/2/event";
 const char *MQTT_SUB_TOPIC = "car/2/cmd";
+>>>>>>> f55c3e92dc1c03812e2be095cfc07c4fc4643342
 
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
@@ -55,7 +77,11 @@ void mqttCallback(char *topic, byte *payload, unsigned int length)
         else if (strcmp(param, "UTURN") == 0)
             cmd.orient = O_UTURN;
 
+<<<<<<< HEAD
+        xQueueSend(g_cmdQ, &cmd, 0);
+=======
         xQueueSend(g_commandQueue, &cmd, 0);
+>>>>>>> f55c3e92dc1c03812e2be095cfc07c4fc4643342
     }
     else if (strcmp(type, "ACTION") == 0)
     {
@@ -67,6 +93,27 @@ void mqttCallback(char *topic, byte *payload, unsigned int length)
         else if (strcmp(param, "UTURN") == 0)
             cmd.action = A_UTURN;
 
+<<<<<<< HEAD
+        xQueueSend(g_cmdQ, &cmd, 0);
+    }
+    else if (strcmp(type, "CNT") == 0)
+    {
+        cmd.roadnum = doc["param"] | 0;
+        cmd.action = A_SETN;
+        xQueueSend(g_cmdQ, &cmd, 0);
+    }
+    else if (strcmp(type, "CAPTURE") == 0)
+    {
+        const char *node = doc["param"] | "";
+        const char *ts = doc["ts"] | "";
+        strncpy(g_capNode, node, sizeof(g_capNode) - 1);
+        g_capNode[sizeof(g_capNode) - 1] = '\0';
+        strncpy(g_capTs, ts, sizeof(g_capTs) - 1);
+        g_capTs[sizeof(g_capTs) - 1] = '\0';
+        g_capReq = true;
+        cmd.action = A_CAPTURE;
+        xQueueSend(g_cmdQ, &cmd, 0);
+=======
         xQueueSend(g_commandQueue, &cmd, 0);
     }
     else if (strcmp(type, "CNT") == 0)
@@ -76,6 +123,7 @@ void mqttCallback(char *topic, byte *payload, unsigned int length)
         cmd.roadnum = doc["param"] | 0;
         cmd.action = A_SETN;
         xQueueSend(g_commandQueue, &cmd, 0);
+>>>>>>> f55c3e92dc1c03812e2be095cfc07c4fc4643342
     }
 }
 
@@ -157,7 +205,11 @@ void mqtt_send_position()
 {
     StaticJsonDocument<128> doc;
     doc["type"] = "POSITION";
+<<<<<<< HEAD
+    doc["param"] = CAR_POSITION;
+=======
     doc["param"] = "2-5";
+>>>>>>> f55c3e92dc1c03812e2be095cfc07c4fc4643342
     char output[128];
     serializeJson(doc, output);
     mqttClient.publish(MQTT_PUB_TOPIC, output);

@@ -26,7 +26,8 @@ enum Action
     A_PAUSE,
     A_PROCESS,
     A_UTURN,
-    A_SETN
+    A_SETN,
+    A_CAPTURE
 };
 
 typedef struct

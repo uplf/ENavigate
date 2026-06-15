@@ -4,7 +4,12 @@
 #include "freertos/queue.h"
 
 // 由 main.cpp 定义，视觉帧输出队列
+<<<<<<< HEAD
+extern QueueHandle_t g_visQ;
+extern volatile bool g_capMode;
+=======
 extern QueueHandle_t g_visionQueue;
+>>>>>>> f55c3e92dc1c03812e2be095cfc07c4fc4643342
 
 // ============================================================
 //  手写解析：格式 "<dx>,<node_flag>,<obstacle_type>"
@@ -27,17 +32,48 @@ static bool fast_parse_vision(const char *line, VisionData_t *out)
     if (!endPtr)
         return false;
 
+<<<<<<< HEAD
+    // 字段3：obstacle_type[:x]（可选，缺省填 "NONE"）
+    // 格式：纯类型如 "none" 或 带坐标如 "dog:160"
+    out->obs_x = -1;
+=======
     // 字段3：obstacle_type（可选，缺省填 "NONE"）
+>>>>>>> f55c3e92dc1c03812e2be095cfc07c4fc4643342
     if (*endPtr == ',')
     {
         p = endPtr + 1;
         size_t len = strlen(p);
         if (len == 0 || len >= sizeof(out->obstacle_type))
+<<<<<<< HEAD
+        {
+            strncpy(out->obstacle_type, "NONE", sizeof(out->obstacle_type));
+        }
+        else
+        {
+            // 查找冒号，拆分类型和 x 坐标
+            char buf[32];
+            strncpy(buf, p, sizeof(buf) - 1);
+            buf[sizeof(buf) - 1] = '\0';
+            char *colon = strchr(buf, ':');
+            if (colon)
+            {
+                *colon = '\0';
+                strncpy(out->obstacle_type, buf, sizeof(out->obstacle_type) - 1);
+                out->obstacle_type[sizeof(out->obstacle_type) - 1] = '\0';
+                out->obs_x = atoi(colon + 1);
+            }
+            else
+            {
+                strncpy(out->obstacle_type, buf, sizeof(out->obstacle_type) - 1);
+                out->obstacle_type[sizeof(out->obstacle_type) - 1] = '\0';
+            }
+=======
             strncpy(out->obstacle_type, "NONE", sizeof(out->obstacle_type));
         else
         {
             strncpy(out->obstacle_type, p, sizeof(out->obstacle_type) - 1);
             out->obstacle_type[sizeof(out->obstacle_type) - 1] = '\0';
+>>>>>>> f55c3e92dc1c03812e2be095cfc07c4fc4643342
         }
     }
     else
@@ -61,6 +97,16 @@ void VisionTask(void *pvParameters)
 
     while (1)
     {
+<<<<<<< HEAD
+        // 拍照模式暂停读串口，让 STATE_CAPTURE 独占
+        if (g_capMode)
+        {
+            vTaskDelay(pdMS_TO_TICKS(10));
+            continue;
+        }
+
+=======
+>>>>>>> f55c3e92dc1c03812e2be095cfc07c4fc4643342
         int avail = Serial1.available();
         if (avail <= 0)
         {
@@ -87,11 +133,19 @@ void VisionTask(void *pvParameters)
                     if (fast_parse_vision(rxBuffer, &visionData))
                     {
                         // Overwrite 策略：队列满则丢最旧帧，保留最新帧
+<<<<<<< HEAD
+                        if (xQueueSend(g_visQ, &visionData, 0) != pdTRUE)
+                        {
+                            VisionData_t dummy;
+                            xQueueReceive(g_visQ, &dummy, 0);
+                            xQueueSend(g_visQ, &visionData, 0);
+=======
                         if (xQueueSend(g_visionQueue, &visionData, 0) != pdTRUE)
                         {
                             VisionData_t dummy;
                             xQueueReceive(g_visionQueue, &dummy, 0);
                             xQueueSend(g_visionQueue, &visionData, 0);
+>>>>>>> f55c3e92dc1c03812e2be095cfc07c4fc4643342
                         }
                     }
                 }
