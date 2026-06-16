@@ -1,38 +1,16 @@
 #include "mqtt_handler.h"
-<<<<<<< HEAD
-#include "config.h"
-#include "credentials.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/queue.h"
-
-#define STR_HELPER(x) #x
-#define STR(x) STR_HELPER(x)
-
-extern QueueHandle_t g_cmdQ;
-
-// CAPTURE 命令参数，ControlTask 读取
-char g_capNode[16] = "";
-char g_capTs[20] = "";
-bool g_capReq = false;
-
-// MQTT_SERVER, MQTT_PORT, MQTT_USERNAME, MQTT_PASSWORD 定义在 credentials.h
-const char *MQTT_CLIENT_ID = "esp32_car" STR(CAR_ID) "_001";
-const char *MQTT_PUB_TOPIC = "car/" STR(CAR_ID) "/event";
-const char *MQTT_SUB_TOPIC = "car/" STR(CAR_ID) "/cmd";
-=======
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 
 extern QueueHandle_t g_commandQueue;
 
-const char *MQTT_SERVER = "myxiaxiais.art";
+const char *MQTT_SERVER = "------";
 const int MQTT_PORT = 1883;
 const char *MQTT_CLIENT_ID = "esp32_car2_001";
 const char *MQTT_USERNAME = "agv";
-const char *MQTT_PASSWORD = "123456";
+const char *MQTT_PASSWORD = "------";
 const char *MQTT_PUB_TOPIC = "car/2/event";
 const char *MQTT_SUB_TOPIC = "car/2/cmd";
->>>>>>> f55c3e92dc1c03812e2be095cfc07c4fc4643342
 
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
